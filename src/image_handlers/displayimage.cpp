@@ -170,10 +170,13 @@ void DisplayImage::create_qimages()
     converters[frame->colorFormat()](frame, *cv_image);
     
     if(d->track_mode == Private::TrackInit) {
-      //d->tracker = cv::Tracker::create("KFC");
-      bool initialized = d->tracker = cv::Tracker::create("TLD");
-      if(initialized)
+      bool initialized = d->tracker = cv::Tracker::create("KCF");
+      qDebug() << "Tracker KCF created: " << initialized;
+      //bool initialized = d->tracker = cv::Tracker::create("TLD");
+      if(initialized) {
         initialized &= d->tracker->init(frame->mat(), d->track_roi);
+        qDebug() << "Tracker KCF initialized: " << initialized;
+      }
       d->track_mode = initialized ? Private::Track : Private::TrackNone;
     } else if(d->track_mode == Private::Track) {
       d->tracker->update(*cv_image, d->track_roi);
