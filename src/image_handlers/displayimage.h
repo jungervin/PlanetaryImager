@@ -33,6 +33,7 @@ public:
     virtual void handle(const Frame::ptr &frame);
     void setRecording(bool recording);
     QRect imageRect() const;
+    void track(const QRect &rect);
 signals:
   void gotImage(const QImage &);
   void displayFPS(double fps);

@@ -267,9 +267,14 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
       d->selection_mode = Private::ROI;
       d->image_widget->startSelectionMode();
     });
+    connect(d->ui->actionTrack, &QAction::triggered, [&] { 
+      d->selection_mode = Private::Guide;
+      d->image_widget->startSelectionMode();
+    });
     QMap<Private::SelectionMode, function<void(const QRect &)>> handle_selection {
       {Private::NoSelection, [](const QRect&) {}},
       {Private::ROI, [&](const QRect &rect) { d->imager->setROI(rect); }},
+      {Private::Guide, [&](const QRect &rect) { d->displayImage->track(rect); }},
     };
     connect(d->image_widget, &ZoomableImage::selectedROI, [this, handle_selection](const QRectF &rect) {
       handle_selection[d->selection_mode](rect.toRect());

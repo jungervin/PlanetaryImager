@@ -152,6 +152,7 @@
    <addaction name="separator"/>
    <addaction name="actionSelect_ROI"/>
    <addaction name="actionClear_ROI"/>
+   <addaction name="actionTrack"/>
   </widget>
   <widget class="QDockWidget" name="histogram">
    <property name="floating">
@@ -303,6 +304,11 @@
    </property>
    <property name="text">
     <string>Clear ROI</string>
+   </property>
+  </action>
+  <action name="actionTrack">
+   <property name="text">
+    <string>Track</string>
    </property>
   </action>
  </widget>
