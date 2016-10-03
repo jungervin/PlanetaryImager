@@ -26,18 +26,25 @@ using namespace std;
 
 class AutoguiderWorker;
 
+enum AutoguiderControlType {
+  HorizontalDrift = 0,
+  VerticalDrift = 1,
+};
+typedef QHash<AutoguiderControlType, Imager::Control> AutoguiderControls;
 DPTR_IMPL(SimulatorAutoguider) {
   shared_ptr<AutoguiderWorker> worker;
+  AutoguiderControls controls;
 };
 
 
 class AutoguiderWorker : public ImagerThread::Worker {
 public:
-  AutoguiderWorker();
+  AutoguiderWorker(AutoguiderControls &controls);
   static const cv::Size image_size;
   Frame::ptr shoot() override;
-  void setROI(const QRect &roi);
+  void setROI(const QRect &);
 private:
+  AutoguiderControls &controls;
   QPointF coordinates;
   cv::Mat image;
   LOG_C_SCOPE(AutoguiderWorker);
@@ -45,7 +52,7 @@ private:
 
 const cv::Size AutoguiderWorker::image_size = cv::Size{1280, 1024};
 
-AutoguiderWorker::AutoguiderWorker()
+AutoguiderWorker::AutoguiderWorker(AutoguiderControls &controls) : controls{controls}
 {
   QFile file(":/simulator/jupiter_gulinux.jpg");
   file.open(QIODevice::ReadOnly);
@@ -57,7 +64,7 @@ AutoguiderWorker::AutoguiderWorker()
   };
 }
 
-void AutoguiderWorker::setROI(const QRect& roi)
+void AutoguiderWorker::setROI(const QRect&)
 {
 }
 
@@ -65,15 +72,21 @@ Frame::ptr AutoguiderWorker::shoot()
 {
   GuLinux::Scope sleep{[]{QThread::currentThread()->msleep(10); }};
   cv::Mat result{image_size, CV_8UC1, cv::Scalar{0}};
-  cv::Mat roi(result, cv::Rect{static_cast<int>(coordinates.x()), static_cast<int>(coordinates.y()), image.cols, image.rows});
+  auto roi_size = cv::Rect{static_cast<int>(coordinates.x()), static_cast<int>(coordinates.y()), image.cols, image.rows} & cv::Rect{0, 0, result.cols, result.rows};
+  cv::Mat roi(result, roi_size);
   image.copyTo(roi);
+  coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
   return make_shared<Frame>(Frame::Mono, result);
 }
 
 
 
-SimulatorAutoguider::SimulatorAutoguider(const ImageHandler::ptr& handler) : Imager{handler}
+SimulatorAutoguider::SimulatorAutoguider(const ImageHandler::ptr& handler) : Imager{handler}, dptr()
 {
+  d->controls = {
+    {HorizontalDrift, {HorizontalDrift, "HorizontalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
+    {VerticalDrift, {VerticalDrift, "VerticalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
+  };
 }
 
 QString SimulatorAutoguider::name() const
@@ -87,7 +100,7 @@ void SimulatorAutoguider::clearROI()
 
 Imager::Controls SimulatorAutoguider::controls() const
 {
-  return {};
+  return d->controls.values();
 }
 
 Imager::Properties SimulatorAutoguider::properties() const
@@ -97,6 +110,10 @@ Imager::Properties SimulatorAutoguider::properties() const
 
 void SimulatorAutoguider::setControl(const Imager::Control& control)
 {
+  push_job_on_thread([this, control]{
+    d->controls[static_cast<AutoguiderControlType>(control.id)] = control;
+    emit changed(control);
+  });
 }
 
 void SimulatorAutoguider::setROI(const QRect&)
@@ -105,7 +122,7 @@ void SimulatorAutoguider::setROI(const QRect&)
 
 void SimulatorAutoguider::startLive()
 {
-  restart([]{ return make_shared<AutoguiderWorker>(); });
+  restart([this]{ return make_shared<AutoguiderWorker>(d->controls); });
 }
 
 bool SimulatorAutoguider::supportsROI() const

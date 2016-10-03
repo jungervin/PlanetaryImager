@@ -21,6 +21,7 @@
 #include "commons/configuration.h"
 #include <QDebug>
 #include <QGraphicsRectItem>
+#include <QElapsedTimer>
 #include <opencv2/opencv.hpp>
 #include "commons/opencv_utils.h"
 
@@ -47,6 +48,7 @@ DPTR_IMPL(AutoGuider) {
   enum TrackMode { TrackNone, TrackInit, Track } track_mode = TrackNone;
   cv::Rect2d track_roi;
   cv::Ptr<cv::Tracker> tracker;
+  QElapsedTimer elapsed;
 };
 
 AutoGuider::AutoGuider(QGraphicsScene* scene, Configuration &configuration) : dptr(scene, configuration)
@@ -77,10 +79,13 @@ AutoGuiderRect::~AutoGuiderRect()
 
 void AutoGuider::handle(const Frame::ptr& frame)
 {
+  if(d->track_mode == Private::TrackNone || (d->track_mode == Private::Track && d->elapsed.elapsed() < 100) )
+    return;
   cv::Mat image = frame->mat();
   if(image.channels() == 1) {
     cv::cvtColor(image, image, CV_GRAY2BGR);
   }
+  d->elapsed.restart();
   if(d->track_mode == Private::TrackInit) {
     bool initialized = d->tracker = cv::Tracker::create("KCF");
     qDebug() << "Tracker KCF created: " << initialized;
