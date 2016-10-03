@@ -36,9 +36,11 @@ enum AutoguiderControlType {
 };
 typedef QHash<AutoguiderControlType, Imager::Control> AutoguiderControls;
 DPTR_IMPL(SimulatorAutoguider) {
+  SimulatorAutoguider *q;
   shared_ptr<AutoguiderWorker> worker;
   AutoguiderControls controls;
 };
+
 
 
 class AutoguiderWorker : public ImagerThread::Worker {
@@ -53,6 +55,8 @@ private:
   cv::Mat jupiter, stars;
   LOG_C_SCOPE(AutoguiderWorker);
 };
+
+
 
 const cv::Size AutoguiderWorker::image_size = cv::Size{1280, 1024};
 

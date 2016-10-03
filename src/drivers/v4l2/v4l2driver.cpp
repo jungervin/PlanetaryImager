@@ -38,7 +38,7 @@ V4L2Driver::~V4L2Driver()
 }
 
 
-class V4L2DeviceInfo : public Driver::Camera {
+class V4L2DeviceInfo : public ImagingDriver::Camera {
 public:
   V4L2DeviceInfo(int index, const QString &name) : _index {index}, _name{name} {}
   virtual Imager * imager ( const ImageHandler::ptr& imageHandler ) const { return new V4L2Imager(_name , _index, imageHandler); }
@@ -48,7 +48,7 @@ private:
   const QString _name;
 };
 
-Driver::Cameras V4L2Driver::cameras() const
+ImagingDriver::Cameras V4L2Driver::cameras() const
 {
   Cameras _cameras;
   auto entries = QDir("/sys/class/video4linux").entryInfoList();

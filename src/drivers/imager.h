@@ -26,6 +26,7 @@
 #include "image_handlers/imagehandler.h"
 #include "imagerthread.h"
 #include "c++/dptr.h"
+#include "autoguider.h"
 
 class Imager : public QObject {
   Q_OBJECT
@@ -41,10 +42,12 @@ public:
   virtual QString name() const = 0;
   virtual Properties properties() const = 0;
   virtual bool supportsROI() const = 0;
+  virtual Drivers::Autoguider::ptr autoguider() const;
   
 protected:
   void restart(const ImagerThread::Worker::factory &worker);
   void push_job_on_thread(const ImagerThread::Job &job);
+  void set_autoguider(const Drivers::Autoguider::Guide &guide_function);
 private:
   DPTR
   

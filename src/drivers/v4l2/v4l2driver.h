@@ -22,12 +22,12 @@
 #include "drivers/driver.h"
 #include "dptr.h"
 
-class V4L2Driver : public Driver
+class V4L2Driver : public ImagingDriver
 {
 public:
 V4L2Driver();
 ~V4L2Driver();
-virtual Driver::Cameras cameras() const;
+virtual ImagingDriver::Cameras cameras() const;
 
 private:
     DPTR

@@ -22,8 +22,9 @@
 #include "imager.h"
 #include "dptr.h"
 
-class Driver {
+class ImagingDriver {
 public:
+  typedef std::shared_ptr<ImagingDriver> ptr;
   class Camera {
   public:
     typedef std::shared_ptr<Camera> ptr;
@@ -34,12 +35,11 @@ public:
   
   virtual Cameras cameras() const = 0;
 };
-typedef std::shared_ptr<Driver> DriverPtr;
 
-class SupportedDrivers : public Driver {
+class SupportedImagingDrivers : public ImagingDriver {
 public:
-  SupportedDrivers();
-  ~SupportedDrivers();
+    SupportedImagingDrivers();
+  ~SupportedImagingDrivers();
   virtual Cameras cameras() const;
 private:
   DPTR;

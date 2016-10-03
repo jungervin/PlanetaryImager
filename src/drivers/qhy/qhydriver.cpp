@@ -38,7 +38,7 @@ DPTR_IMPL(QHYDriver) {
 };
 
 
-class QHYCamera : public Driver::Camera {
+class QHYCamera : public ImagingDriver::Camera {
 public:
   QHYCamera(int index) : index{index} {}
   virtual Imager *imager(const ImageHandler::ptr& imageHandler) const { return new QHYCCDImager(name(), id, imageHandler); }
@@ -60,7 +60,7 @@ QHYDriver::~QHYDriver()
 }
 
 
-Driver::Cameras QHYDriver::cameras() const
+ImagingDriver::Cameras QHYDriver::cameras() const
 {
   Cameras cameras;
   int found_cameras = ScanQHYCCD();

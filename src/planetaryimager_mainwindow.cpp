@@ -63,7 +63,7 @@ Q_DECLARE_METATYPE(cv::Mat)
 DPTR_IMPL(PlanetaryImagerMainWindow) {
   PlanetaryImagerMainWindow *q;
   unique_ptr<Ui::PlanetaryImagerMainWindow> ui;
-  DriverPtr driver = make_shared<SupportedDrivers>();
+  ImagingDriver::ptr driver = make_shared<SupportedImagingDrivers>();
   Imager *imager = nullptr;
   void rescan_devices();
   Configuration configuration;
@@ -84,7 +84,7 @@ DPTR_IMPL(PlanetaryImagerMainWindow) {
     
   RecordingPanel* recording_panel;
   
-  void connectCamera(const Driver::Camera::ptr &camera);
+  void connectCamera(const ImagingDriver::Camera::ptr &camera);
   void cameraDisconnected();
   void enableUIWidgets(bool cameraConnected);
     void init_devices_watcher();
@@ -99,23 +99,23 @@ class CreateImagerWorker : public QObject {
   Q_OBJECT
 public:
   typedef std::function<void(Imager *)> Slot;
-  static void create(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created);
+  static void create(const ImagingDriver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created);
 private slots:
   void exec();
 private:
-  explicit CreateImagerWorker(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler);
-  Driver::Camera::ptr camera;
+  explicit CreateImagerWorker(const ImagingDriver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler);
+    ImagingDriver::Camera::ptr camera;
   ImageHandler::ptr imageHandler;
 signals:
   void imager(Imager *imager);
 };
 
-CreateImagerWorker::CreateImagerWorker(const Driver::Camera::ptr& camera, const ImageHandler::ptr &imageHandler)
+CreateImagerWorker::CreateImagerWorker(const ImagingDriver::Camera::ptr& camera, const ImageHandler::ptr &imageHandler)
   : QObject(nullptr), camera{camera}, imageHandler{imageHandler}
 {
 }
 
-void CreateImagerWorker::create(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created)
+void CreateImagerWorker::create(const ImagingDriver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created)
 {
   auto create_imager = new CreateImagerWorker(camera, imageHandler);
   create_imager->moveToThread(thread);
@@ -322,7 +322,7 @@ void PlanetaryImagerMainWindow::Private::init_devices_watcher()
 void PlanetaryImagerMainWindow::Private::rescan_devices()
 {
   ui->menu_device_load->clear();
-  Thread::Run<Driver::Cameras>([=]{ return driver->cameras(); }, [=]( const Driver::Cameras &cameras){
+  Thread::Run<ImagingDriver::Cameras>([=]{ return driver->cameras(); }, [=]( const ImagingDriver::Cameras &cameras){
     for(auto device: cameras) {
       auto message = tr("Found %1 devices").arg(cameras.size());
       qDebug() << message;
@@ -333,7 +333,7 @@ void PlanetaryImagerMainWindow::Private::rescan_devices()
   });
 }
 
-void PlanetaryImagerMainWindow::Private::connectCamera(const Driver::Camera::ptr& camera)
+void PlanetaryImagerMainWindow::Private::connectCamera(const ImagingDriver::Camera::ptr& camera)
 {
     if(imager)
         imager->destroy();

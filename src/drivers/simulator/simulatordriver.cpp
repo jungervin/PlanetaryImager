@@ -25,7 +25,7 @@
 
 using namespace std;
 
-class SimulatorCamera : public Driver::Camera {
+class SimulatorCamera : public ImagingDriver::Camera {
 public:
   typedef function<Imager *(const ImageHandler::ptr& imageHandler)> ImageHandlerFactory;
   typedef shared_ptr<SimulatorCamera> ptr;
@@ -49,7 +49,7 @@ Imager * SimulatorCamera::imager ( const ImageHandler::ptr& imageHandler ) const
   return factory(imageHandler);
 }
 
-Driver::Cameras SimulatorDriver::cameras() const
+ImagingDriver::Cameras SimulatorDriver::cameras() const
 {
   static Cameras _cameras {
     make_shared<SimulatorCamera>("Simulator: Planet", [](const ImageHandler::ptr& imageHandler){ return new SimulatorImager(imageHandler); }),

@@ -23,12 +23,12 @@
 #include "c++/dptr.h"
 
 
-class ZWO_ASI_Driver : public Driver
+class ZWO_ASI_Driver : public ImagingDriver
 {
 public:
     ZWO_ASI_Driver();
     ~ZWO_ASI_Driver();
-    virtual Driver::Cameras cameras() const;
+    virtual ImagingDriver::Cameras cameras() const;
 private:
   DPTR
 };

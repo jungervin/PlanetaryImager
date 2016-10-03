@@ -15,20 +15,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef QHYDRIVER_H
-#define QHYDRIVER_H
-#include "dptr.h"
 
-#include "drivers/driver.h"
+#ifndef DRIVERS_AUTOGUIDER_H
+#define DRIVERS_AUTOGUIDER_H
+#include <memory>
+#include <functional>
+#include <chrono>
+namespace Drivers {
 
-class QHYDriver : public ImagingDriver
+class Autoguider
 {
 public:
-    QHYDriver();
-    ~QHYDriver();
-    virtual Cameras cameras() const;
-private:
-  DPTR
+  typedef std::shared_ptr<Autoguider> ptr;
+  enum Direction {North, South, East, West };
+  virtual bool guide(Direction direction, const std::chrono::milliseconds &duration) = 0;
+  typedef std::function<bool(Direction, const std::chrono::milliseconds &)> Guide;
 };
+}
 
-#endif // QHYDRIVER_H
+#endif // DRIVERS_AUTOGUIDER_H

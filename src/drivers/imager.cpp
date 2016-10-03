@@ -25,8 +25,26 @@ using namespace std;
 DPTR_IMPL(Imager) {
   const ImageHandler::ptr image_handler;
   ImagerThread::ptr imager_thread;
+  Drivers::Autoguider::ptr autoguider;
   LOG_C_SCOPE(Imager);
+  class Autoguider : public Drivers::Autoguider {
+  public:
+    Autoguider(const Drivers::Autoguider::Guide &guide_function);
+    bool guide(Drivers::Autoguider::Direction direction, const std::chrono::milliseconds & duration) override;
+  private:
+    const Drivers::Autoguider::Guide guide_function;
+  };
 };
+
+Imager::Private::Autoguider::Autoguider(const Drivers::Autoguider::Guide& guide_function) : guide_function{guide_function}
+{
+}
+
+bool Imager::Private::Autoguider::guide(Drivers::Autoguider::Direction direction, const std::chrono::milliseconds& duration)
+{
+  return guide_function ? guide_function(direction, duration) : guide_function.operator bool();
+}
+
 
 Imager::Imager(const ImageHandler::ptr& image_handler) : QObject(nullptr), dptr(image_handler)
 {
@@ -61,3 +79,14 @@ void Imager::push_job_on_thread(const ImagerThread::Job& job)
   }
   d->imager_thread->push_job(job);
 }
+
+Drivers::Autoguider::ptr Imager::autoguider() const
+{
+  return d->autoguider;
+}
+
+void Imager::set_autoguider(const Drivers::Autoguider::Guide& guide_function)
+{
+  d->autoguider = make_shared<Private::Autoguider>(guide_function);
+}
+

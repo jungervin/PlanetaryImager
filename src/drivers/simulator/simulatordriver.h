@@ -21,11 +21,11 @@
 
 #include "drivers/driver.h"
 
-class SimulatorDriver : public Driver
+class SimulatorDriver : public ImagingDriver
 {
 public:
   SimulatorDriver();
-  virtual Driver::Cameras cameras() const;
+  virtual ImagingDriver::Cameras cameras() const;
 };
 
 #endif // SIMULATORDRIVER_H

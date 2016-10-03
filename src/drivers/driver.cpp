@@ -22,28 +22,28 @@
 
 using namespace std;
 
-class SupportedDrivers::Private {
+class SupportedImagingDrivers::Private {
 public:
-  Private(SupportedDrivers *q);  
+  Private(SupportedImagingDrivers *q);  
 private:
-  SupportedDrivers *q;
+    SupportedImagingDrivers *q;
 };
 
-SupportedDrivers::Private::Private(SupportedDrivers* q) : q{q}
+SupportedImagingDrivers::Private::Private(SupportedImagingDrivers* q) : q{q}
 {
 
 }
 
-SupportedDrivers::SupportedDrivers() : dptr(this)
+SupportedImagingDrivers::SupportedImagingDrivers() : dptr(this)
 {
 }
 
-SupportedDrivers::~SupportedDrivers()
+SupportedImagingDrivers::~SupportedImagingDrivers()
 {
 }
 
 
-Driver::Cameras SupportedDrivers::cameras() const
+ImagingDriver::Cameras SupportedImagingDrivers::cameras() const
 {
   Cameras cameras;
   qDebug() << "drivers: " << AvailableDrivers::drivers.size();

@@ -15,20 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef QHYDRIVER_H
-#define QHYDRIVER_H
-#include "dptr.h"
 
-#include "drivers/driver.h"
+#include "autoguider.h"
 
-class QHYDriver : public ImagingDriver
-{
-public:
-    QHYDriver();
-    ~QHYDriver();
-    virtual Cameras cameras() const;
-private:
-  DPTR
-};
-
-#endif // QHYDRIVER_H
+using namespace Drivers;

@@ -28,7 +28,7 @@ DPTR_IMPL(ZWO_ASI_Driver) {
 };
 
 namespace {
-  class ZWO_ASI_Camera : public Driver::Camera {
+  class ZWO_ASI_Camera : public ImagingDriver::Camera {
   public:
     typedef shared_ptr<ZWO_ASI_Camera> ptr;
     ZWO_ASI_Camera(const ASI_CAMERA_INFO &info) : info{info} {}
@@ -62,10 +62,10 @@ ZWO_ASI_Driver::~ZWO_ASI_Driver()
 
 }
 
-Driver::Cameras ZWO_ASI_Driver::cameras() const
+ImagingDriver::Cameras ZWO_ASI_Driver::cameras() const
 {
   int ncams = ASIGetNumOfConnectedCameras();
-  Driver::Cameras cameras;
+    ImagingDriver::Cameras cameras;
   int index=0;
   for(int index=0; index<ncams; index++) {
     ASI_CAMERA_INFO info;
