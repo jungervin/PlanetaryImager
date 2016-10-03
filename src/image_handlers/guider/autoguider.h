@@ -20,6 +20,7 @@
 #define AUTOGUIDER_H
 
 #include "image_handlers/imagehandler.h"
+#include "drivers/autoguider.h"
 
 class QGraphicsScene;
 class Configuration;
@@ -32,6 +33,7 @@ public:
   typedef std::shared_ptr<AutoGuider> ptr;
     void handle(const Frame::ptr &frame);
     void track(const QRect &rect);
+    void setGuider(const Drivers::Autoguider::ptr &autoguider);
 private:
   DPTR
 };

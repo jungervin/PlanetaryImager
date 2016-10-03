@@ -348,6 +348,8 @@ void PlanetaryImagerMainWindow::Private::onImagerInitialized(Imager * imager)
     }
     cameraDisconnected();
     this->imager = imager;
+    if(auto guider = imager->autoguider())
+      autoguider->setGuider(guider);
     imager->startLive();
     statusbar_info_widget->deviceConnected(imager->name());
     connect(imager, &Imager::disconnected, q, bind(&Private::cameraDisconnected, this), Qt::QueuedConnection);

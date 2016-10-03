@@ -108,4 +108,10 @@ void AutoGuider::track(const QRect& rect)
   d->track_mode = Private::TrackInit;
 }
 
+void AutoGuider::setGuider(const Drivers::Autoguider::ptr& autoguider)
+{
+  qDebug() << "Setting autoguider: " << autoguider.operator bool();
+}
+
+
 #include "autoguider.moc"

@@ -23,7 +23,8 @@
 #include <QFile>
 #include <QPointF>
 #include "Qt/strings.h"
-
+#include <atomic>
+#include <mutex>
 using namespace std;
 
 class AutoguiderWorker;
@@ -48,14 +49,41 @@ public:
   AutoguiderWorker(AutoguiderControls &controls);
   static const cv::Size image_size;
   Frame::ptr shoot() override;
-  void setROI(const QRect &);
+  bool guide(Drivers::Autoguider::Direction &direction, const chrono::milliseconds &duration);
 private:
   AutoguiderControls &controls;
-  QPointF jupiter_coordinates, stars_coordinates;
+  class AtomicCoordinates {
+  public:
+    AtomicCoordinates(double x = 0, double y = 0) : _x{x}, _y{y} {}
+    double x() const { unique_lock<mutex> lock(_mutex); return _x; }
+    double y() const { unique_lock<mutex> lock(_mutex); return _y; }
+    AtomicCoordinates &operator+=(const QPointF &p);
+    AtomicCoordinates &operator=(const AtomicCoordinates &other);
+  private:
+    mutable mutex _mutex;
+    double _x, _y;
+  };
+  AtomicCoordinates jupiter_coordinates, stars_coordinates;
+  AtomicCoordinates *coordinates = nullptr;
   cv::Mat jupiter, stars;
   LOG_C_SCOPE(AutoguiderWorker);
 };
 
+AutoguiderWorker::AtomicCoordinates & AutoguiderWorker::AtomicCoordinates::operator+=(const QPointF& p)
+{
+  unique_lock<mutex> lock(_mutex);
+  _x += p.x();
+  _y += p.y();
+  return *this;
+}
+
+AutoguiderWorker::AtomicCoordinates & AutoguiderWorker::AtomicCoordinates::operator=(const AutoguiderWorker::AtomicCoordinates& other)
+{
+  unique_lock<mutex> lock(_mutex);
+  _x = other.x();
+  _y = other.y();
+  return *this;
+}
 
 
 const cv::Size AutoguiderWorker::image_size = cv::Size{1280, 1024};
@@ -70,33 +98,27 @@ AutoguiderWorker::AutoguiderWorker(AutoguiderControls &controls) : controls{cont
   };
   load(jupiter, "jupiter_gulinux");
   load(stars, "dss_star_field");
-  jupiter_coordinates = {
-    static_cast<qreal>(image_size.width)/2. - jupiter.cols/2,
-    static_cast<qreal>(image_size.height)/2. - jupiter.rows/2
-  };
-  stars_coordinates = {
-    static_cast<qreal>(stars.cols)/2. - image_size.width/2,
-    static_cast<qreal>(stars.rows)/2. - image_size.height/2
-  };
+  jupiter_coordinates = {static_cast<qreal>(image_size.width)/2. - jupiter.cols/2, static_cast<qreal>(image_size.height)/2. - jupiter.rows/2 };
+  stars_coordinates = {static_cast<qreal>(stars.cols)/2. - image_size.width/2, static_cast<qreal>(stars.rows)/2. - image_size.height/2 };
 }
 
-void AutoguiderWorker::setROI(const QRect&)
-{
-}
 
 Frame::ptr AutoguiderWorker::shoot()
 {
-  GuLinux::Scope sleep{[this]{QThread::currentThread()->msleep( controls[Sleep].value ); }};
+  GuLinux::Scope sleep{[this]{
+    *coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
+    QThread::currentThread()->msleep( controls[Sleep].value );
+  }};
   if(controls[Image].value == 0) {
+    coordinates = &jupiter_coordinates;
     cv::Mat result{image_size, CV_8UC1, cv::Scalar{0}};
-    auto roi_size = cv::Rect{static_cast<int>(jupiter_coordinates.x()), static_cast<int>(jupiter_coordinates.y()), jupiter.cols, jupiter.rows} & cv::Rect{0, 0, result.cols, result.rows};
+    auto roi_size = cv::Rect{static_cast<int>(coordinates->x()), static_cast<int>(coordinates->y()), jupiter.cols, jupiter.rows} & cv::Rect{0, 0, result.cols, result.rows};
     cv::Mat roi(result, roi_size);
     jupiter.copyTo(roi);
-    jupiter_coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
     return make_shared<Frame>(Frame::Mono, result);
   }
-  auto roi_size = cv::Rect{static_cast<int>(stars_coordinates.x()), static_cast<int>(stars_coordinates.y()), image_size.width, image_size.height} & cv::Rect{0, 0, stars.cols, stars.rows};
-  stars_coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
+  coordinates = &stars_coordinates;
+  auto roi_size = cv::Rect{static_cast<int>(coordinates->x()), static_cast<int>(coordinates->y()), image_size.width, image_size.height} & cv::Rect{0, 0, stars.cols, stars.rows};
   cv::Mat roi{stars, roi_size};
   return make_shared<Frame>(Frame::Mono, roi);
   
@@ -112,6 +134,11 @@ SimulatorAutoguider::SimulatorAutoguider(const ImageHandler::ptr& handler) : Ima
     {HorizontalDrift, {HorizontalDrift, "HorizontalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
     {VerticalDrift, {VerticalDrift, "VerticalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
   };
+  set_autoguider([=](Drivers::Autoguider::Direction direction, const chrono::milliseconds &duration){
+    if(! d->worker)
+      return false;
+    return d->worker->guide(direction, duration);
+  });
 }
 
 QString SimulatorAutoguider::name() const
@@ -155,6 +182,25 @@ bool SimulatorAutoguider::supportsROI() const
   return false;
 }
 
-
+bool AutoguiderWorker::guide(Drivers::Autoguider::Direction& direction, const chrono::milliseconds& duration)
+{
+  if(! coordinates)
+    return false;
+  QElapsedTimer elapsed;
+  elapsed.restart();
+  double rate = 1;
+  double rotation = 0;
+  QHash<Drivers::Autoguider::Direction, QPointF> directions {
+    { Drivers::Autoguider::North, {0, -1} },
+    { Drivers::Autoguider::South, {0, +1} },
+    { Drivers::Autoguider::East, {+1, 0} },
+    { Drivers::Autoguider::East, {-1, 0} },
+  };
+  while(elapsed.elapsed() < duration.count()) {
+    *coordinates += directions[direction];
+    QThread::currentThread()->msleep(1);
+  }
+  return true;
+}
 
 
