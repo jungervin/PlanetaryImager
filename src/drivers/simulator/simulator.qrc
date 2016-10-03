@@ -2,5 +2,6 @@
 <qresource prefix="/simulator">
     <file alias="jupiter_hubble.jpg">jupiter_hubble.jpg</file>
     <file alias="jupiter_gulinux.jpg">jupiter_gulinux.jpg</file>
+    <file alias="dss_star_field.jpg">dss_star_field.jpg</file>
 </qresource>
 </RCC>

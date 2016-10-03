@@ -22,13 +22,17 @@
 #include <QThread>
 #include <QFile>
 #include <QPointF>
+#include "Qt/strings.h"
+
 using namespace std;
 
 class AutoguiderWorker;
 
 enum AutoguiderControlType {
-  HorizontalDrift = 0,
-  VerticalDrift = 1,
+  Image = 0,
+  Sleep = 1,
+  HorizontalDrift = 2,
+  VerticalDrift = 3,
 };
 typedef QHash<AutoguiderControlType, Imager::Control> AutoguiderControls;
 DPTR_IMPL(SimulatorAutoguider) {
@@ -45,8 +49,8 @@ public:
   void setROI(const QRect &);
 private:
   AutoguiderControls &controls;
-  QPointF coordinates;
-  cv::Mat image;
+  QPointF jupiter_coordinates, stars_coordinates;
+  cv::Mat jupiter, stars;
   LOG_C_SCOPE(AutoguiderWorker);
 };
 
@@ -54,13 +58,21 @@ const cv::Size AutoguiderWorker::image_size = cv::Size{1280, 1024};
 
 AutoguiderWorker::AutoguiderWorker(AutoguiderControls &controls) : controls{controls}
 {
-  QFile file(":/simulator/jupiter_gulinux.jpg");
-  file.open(QIODevice::ReadOnly);
-  QByteArray file_data = file.readAll();
-  image = cv::imdecode(cv::InputArray{file_data.data(), file_data.size()}, CV_LOAD_IMAGE_GRAYSCALE);
-  coordinates = {
-    static_cast<qreal>(image_size.width)/2. - image.cols/2,
-    static_cast<qreal>(image_size.height)/2. - image.rows/2
+  auto load = [](cv::Mat &image, const QString &name) {
+    QFile file(":/simulator/%1.jpg"_q % name);
+    file.open(QIODevice::ReadOnly);
+    QByteArray file_data = file.readAll();
+    image = cv::imdecode(cv::InputArray{file_data.data(), file_data.size()}, CV_LOAD_IMAGE_GRAYSCALE);
+  };
+  load(jupiter, "jupiter_gulinux");
+  load(stars, "dss_star_field");
+  jupiter_coordinates = {
+    static_cast<qreal>(image_size.width)/2. - jupiter.cols/2,
+    static_cast<qreal>(image_size.height)/2. - jupiter.rows/2
+  };
+  stars_coordinates = {
+    static_cast<qreal>(stars.cols)/2. - image_size.width/2,
+    static_cast<qreal>(stars.rows)/2. - image_size.height/2
   };
 }
 
@@ -70,13 +82,20 @@ void AutoguiderWorker::setROI(const QRect&)
 
 Frame::ptr AutoguiderWorker::shoot()
 {
-  GuLinux::Scope sleep{[]{QThread::currentThread()->msleep(10); }};
-  cv::Mat result{image_size, CV_8UC1, cv::Scalar{0}};
-  auto roi_size = cv::Rect{static_cast<int>(coordinates.x()), static_cast<int>(coordinates.y()), image.cols, image.rows} & cv::Rect{0, 0, result.cols, result.rows};
-  cv::Mat roi(result, roi_size);
-  image.copyTo(roi);
-  coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
-  return make_shared<Frame>(Frame::Mono, result);
+  GuLinux::Scope sleep{[this]{QThread::currentThread()->msleep( controls[Sleep].value ); }};
+  if(controls[Image].value == 0) {
+    cv::Mat result{image_size, CV_8UC1, cv::Scalar{0}};
+    auto roi_size = cv::Rect{static_cast<int>(jupiter_coordinates.x()), static_cast<int>(jupiter_coordinates.y()), jupiter.cols, jupiter.rows} & cv::Rect{0, 0, result.cols, result.rows};
+    cv::Mat roi(result, roi_size);
+    jupiter.copyTo(roi);
+    jupiter_coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
+    return make_shared<Frame>(Frame::Mono, result);
+  }
+  auto roi_size = cv::Rect{static_cast<int>(stars_coordinates.x()), static_cast<int>(stars_coordinates.y()), image_size.width, image_size.height} & cv::Rect{0, 0, stars.cols, stars.rows};
+  stars_coordinates += QPointF{controls[HorizontalDrift].value, controls[VerticalDrift].value};
+  cv::Mat roi{stars, roi_size};
+  return make_shared<Frame>(Frame::Mono, roi);
+  
 }
 
 
@@ -84,6 +103,8 @@ Frame::ptr AutoguiderWorker::shoot()
 SimulatorAutoguider::SimulatorAutoguider(const ImageHandler::ptr& handler) : Imager{handler}, dptr()
 {
   d->controls = {
+    {Image, {Image, "Image", 0,1, 1, 0, 0, Control::Combo, { {"Jupiter", 0}, {"Stars", 1} }}},
+    {Sleep, {Sleep, "Frame pause", 0,1000, 1, 30, 30, Control::Number, {}, 2, true, 1ms }},
     {HorizontalDrift, {HorizontalDrift, "HorizontalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
     {VerticalDrift, {VerticalDrift, "VerticalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
   };
