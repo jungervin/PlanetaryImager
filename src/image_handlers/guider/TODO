@@ -1,0 +1,13 @@
+# Install Opencv 3.1:
+wget https://github.com/Itseez/opencv/archive/3.1.0.zip
+unzip 3.1.0.zip && rm 3.1.0.zip
+cd opencv-3.1.0
+git clone --recursive https://github.com/opencv/opencv_contrib.git
+mkdir build && cd build
+
+#install ffmpeg?
+cmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules -DCMAKE_INSTALL_PREFIX=/opt/opencv-3.1.0 -DBUILD_DOCS=Off -DBUILD_SHARED_LIBS=Off -DCMAKE_BUILD_TYPE=Release  -DBUILD_TESTS=Off -DWITH_GTK=Off -DWITH_GTK_2_X=Off -DWITH_QT=Off  -DBUILD_PERF_TESTS=Off  -DBUILD_aruco=Off -DBUILD_bgsegm=Off -DBUILD_bioinspired=Off -DBUILD_ccalib=Off -DBUILD_cnn_3dobj=Off -DBUILD_contrib_world=Off -DBUILD_cvv=Off -DBUILD_datasets=Off -DBUILD_dnn=Off -DBUILD_dnns_easily_fooled=Off -DBUILD_dpm=Off -DBUILD_face=Off -DBUILD_fuzzy=Off -DBUILD_hdf=Off -DBUILD_line_descriptor=Off -DBUILD_matlab=Off -DBUILD_optflow=Off -DBUILD_plot=On -DBUILD_reg=Off -DBUILD_rgbd=Off -DBUILD_saliency=Off -DBUILD_sfm=Off -DBUILD_stereo=Off -DBUILD_structured_light=Off -DBUILD_surface_matching=Off -DBUILD_text=Off -DBUILD_tracking=On -DBUILD_xfeatures2d=Off -DBUILD_ximgproc=Off -DBUILD_xobjdetect=Off -DBUILD_xphoto=Off  ..
+
+# add opencv directory to new cmake prefix path
+export CMAKE_PREFIX_PATH="/opt/opencv-3.1.0/share/OpenCV"
+# -DCMAKE_PREFIX_PATH=/opt/opencv-3.1.0/share/

@@ -18,6 +18,12 @@ add_definitions(-DSRC_DIR="${CMAKE_SOURCE_DIR}")
 
 find_package(Boost REQUIRED)
 find_package(OpenCV REQUIRED )
+find_file(HAVE_OPENCV_TRACKING opencv2/tracking.hpp HINTS ${OpenCV_INCLUDE_DIRS})
+if(HAVE_OPENCV_TRACKING)
+    message("Found OpenCV Tracking headers")
+    add_definitions(-DHAVE_OPENCV_TRACKING)
+endif(HAVE_OPENCV_TRACKING)
+
 #find_package(QCustomPlot REQUIRED)
 
 
