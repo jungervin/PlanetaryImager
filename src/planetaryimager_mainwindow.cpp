@@ -75,6 +75,7 @@ DPTR_IMPL(PlanetaryImagerMainWindow) {
   DisplayImage::ptr displayImage;
   SaveImages::ptr saveImages;
   Histogram::ptr histogram;
+  AutoGuider::ptr autoguider; // TODO: conditional on compilation HAVE_AUTOGUIDER
 
   CameraControlsWidget* cameraSettingsWidget = nullptr;
   CameraInfoWidget* cameraInfoWidget = nullptr;
@@ -171,6 +172,7 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
     d->ui->image->layout()->setMargin(0);
     d->ui->image->layout()->setSpacing(0);
     d->ui->image->layout()->addWidget(d->image_widget = new ZoomableImage(false));
+    d->autoguider = make_shared<AutoGuider>(d->image_widget->scene(), d->configuration);
     connect(d->image_widget, &ZoomableImage::zoomLevelChanged, d->statusbar_info_widget, &StatusBarInfoWidget::zoom);
     d->statusbar_info_widget->zoom(d->image_widget->zoomLevel());
     for(auto item: d->image_widget->actions())
@@ -283,7 +285,7 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
     QMap<Private::SelectionMode, function<void(const QRect &)>> handle_selection {
       {Private::NoSelection, [](const QRect&) {}},
       {Private::ROI, [&](const QRect &rect) { d->imager->setROI(rect); }},
-      {Private::Guide, [&](const QRect &rect) { d->displayImage->track(rect); }},
+      {Private::Guide, [&](const QRect &rect) { d->autoguider->track(rect); }},
     };
     connect(d->image_widget, &ZoomableImage::selectedROI, [this, handle_selection](const QRectF &rect) {
       handle_selection[d->selection_mode](rect.toRect());

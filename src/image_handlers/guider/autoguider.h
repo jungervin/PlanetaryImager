@@ -21,11 +21,19 @@
 
 #include "image_handlers/imagehandler.h"
 
+class QGraphicsScene;
+class Configuration;
+class QRect;
 class AutoGuider : public ImageHandler
 {
 public:
+  AutoGuider(QGraphicsScene *scene, Configuration &configuration);
+  virtual ~AutoGuider();
   typedef std::shared_ptr<AutoGuider> ptr;
     void handle(const Frame::ptr &frame);
+    void track(const QRect &rect);
+private:
+  DPTR
 };
 
 #endif // AUTOGUIDER_H

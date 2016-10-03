@@ -34,7 +34,6 @@
 #include "Qt/benchmark.h"
 #include <atomic>
 #include "commons/utils.h"
-#include <opencv2/tracking.hpp>
 
 using namespace std;
 using namespace std::placeholders;
@@ -79,10 +78,6 @@ DPTR_IMPL(DisplayImage) {
   void bgr2rgb(const Frame::ptr &frame, cv::Mat &image);
   void rgb2rgb(const Frame::ptr &frame, cv::Mat &image);
   void gray2rgb(const Frame::ptr &frame, cv::Mat &image);
-  
-  enum TrackMode { TrackNone, TrackInit, Track } track_mode = TrackNone;
-  cv::Rect2d track_roi;
-  cv::Ptr<cv::Tracker> tracker;
 };
 
 
@@ -168,20 +163,6 @@ void DisplayImage::create_qimages()
       {Frame::Bayer_BGGR, bind(&Private::bayer2rgb, d.get(), _1, _2)},
     };
     converters[frame->colorFormat()](frame, *cv_image);
-    
-    if(d->track_mode == Private::TrackInit) {
-      bool initialized = d->tracker = cv::Tracker::create("KCF");
-      qDebug() << "Tracker KCF created: " << initialized;
-      //bool initialized = d->tracker = cv::Tracker::create("TLD");
-      if(initialized) {
-        initialized &= d->tracker->init(frame->mat(), d->track_roi);
-        qDebug() << "Tracker KCF initialized: " << initialized;
-      }
-      d->track_mode = initialized ? Private::Track : Private::TrackNone;
-    } else if(d->track_mode == Private::Track) {
-      d->tracker->update(*cv_image, d->track_roi);
-      cv::rectangle( *cv_image, d->track_roi, cv::Scalar( 255, 0, 0 ), 2, 1 );
-    }
 
     if(cv_image->depth() != CV_8U && cv_image->depth() != CV_8S) {
       cv_image->convertTo(*cv_image, CV_8UC3, BITS_16_TO_8);
@@ -282,12 +263,6 @@ void DisplayImage::Private::sobel( cv::Mat &source, int blur_size, int ker_size,
   cv::convertScaleAbs( grad_x, abs_grad_x );
   cv::convertScaleAbs( grad_y, abs_grad_y );
   cv::addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, source );
-}
-
-void DisplayImage::track(const QRect& rect)
-{
-  d->track_roi = {rect.x(), rect.y(), rect.width(), rect.height()};
-  d->track_mode = Private::TrackInit;
 }
 
 
