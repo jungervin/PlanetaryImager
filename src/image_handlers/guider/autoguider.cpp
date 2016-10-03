@@ -32,6 +32,7 @@ class AutoGuiderRect : public QObject {
 public:
   typedef shared_ptr<AutoGuiderRect> ptr;
   AutoGuiderRect(QGraphicsScene *scene, const QRectF &rect);
+  ~AutoGuiderRect();
 public slots:
   void update(const QRectF &rect);
 private:
@@ -67,22 +68,32 @@ void AutoGuiderRect::update(const QRectF& rect)
   rectItem->setRect(rect);
 }
 
+AutoGuiderRect::~AutoGuiderRect()
+{
+  scene->removeItem(rectItem);
+  delete rectItem;
+}
+
 
 void AutoGuider::handle(const Frame::ptr& frame)
 {
-    if(d->track_mode == Private::TrackInit) {
-      bool initialized = d->tracker = cv::Tracker::create("KCF");
-      qDebug() << "Tracker KCF created: " << initialized;
-      //bool initialized = d->tracker = cv::Tracker::create("TLD");
-      if(initialized) {
-        initialized &= d->tracker->init(frame->mat(), d->track_roi);
-        qDebug() << "Tracker KCF initialized: " << initialized;
-      }
-      d->track_mode = initialized ? Private::Track : Private::TrackNone;
-    } else if(d->track_mode == Private::Track) {
-      d->tracker->update(frame->mat(), d->track_roi);
-      QMetaObject::invokeMethod(d->autoguider_rect.get(), "update", Q_ARG(QRectF, Utils::cv::cv2qrectf(d->track_roi)));
+  cv::Mat image = frame->mat();
+  if(image.channels() == 1) {
+    cv::cvtColor(image, image, CV_GRAY2BGR);
+  }
+  if(d->track_mode == Private::TrackInit) {
+    bool initialized = d->tracker = cv::Tracker::create("KCF");
+    qDebug() << "Tracker KCF created: " << initialized;
+    //bool initialized = d->tracker = cv::Tracker::create("TLD");
+    if(initialized) {
+      initialized &= d->tracker->init(image, d->track_roi);
+      qDebug() << "Tracker KCF initialized: " << initialized;
     }
+    d->track_mode = initialized ? Private::Track : Private::TrackNone;
+  } else if(d->track_mode == Private::Track) {
+    d->tracker->update(image, d->track_roi);
+    QMetaObject::invokeMethod(d->autoguider_rect.get(), "update", Q_ARG(QRectF, Utils::cv::cv2qrectf(d->track_roi)));
+  }
 }
 
 void AutoGuider::track(const QRect& rect)

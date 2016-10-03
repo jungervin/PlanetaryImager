@@ -21,6 +21,7 @@
 #include <QMutexLocker>
 #include "simulatorimager.h"
 #include "serimager.h"
+#include "simulatorautoguider.h"
 
 using namespace std;
 
@@ -53,6 +54,7 @@ Driver::Cameras SimulatorDriver::cameras() const
   static Cameras _cameras {
     make_shared<SimulatorCamera>("Simulator: Planet", [](const ImageHandler::ptr& imageHandler){ return new SimulatorImager(imageHandler); }),
     make_shared<SimulatorCamera>("Simulator: SER file", [](const ImageHandler::ptr& imageHandler){ return new SERImager(imageHandler); }),
+    make_shared<SimulatorCamera>("Simulator: Autoguider", [](const ImageHandler::ptr& imageHandler){ return new SimulatorAutoguider(imageHandler); }),
   };
   return _cameras;
 }
