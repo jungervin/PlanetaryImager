@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (C) 2016  Marco Gulino <marco@gulinux.net>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,32 +15,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef IMAGE_HANDLER_H
-#define IMAGE_HANDLER_H
 
-#include <memory>
-#include <QList>
-#include<algorithm>
-#include "commons/frame.h"
-#include "c++/dptr.h"
+#include "imagehandler.h"
 
+using namespace std;
 
-class ImageHandler {
-public:
-  typedef std::shared_ptr<ImageHandler> ptr;
-  virtual void handle(const Frame::ptr &frame) = 0;
+DPTR_IMPL(ImageHandlers) {
+    QList<ImageHandler::ptr> handlers;
 };
 
-class ImageHandlers : public ImageHandler {
-public:
-  ImageHandlers(std::initializer_list<ImageHandler::ptr> handlers);
-  virtual ~ImageHandlers();
-  virtual void handle(const Frame::ptr &frame);
-private:
-  DPTR
-};
+ImageHandlers::~ImageHandlers()
+{
+}
 
+ImageHandlers::ImageHandlers(initializer_list<ImageHandler::ptr> handlers) : dptr({handlers})
+{
+}
 
-
-#endif
-
+void ImageHandlers::handle(const Frame::ptr& frame)
+{
+    for(auto handler: d->handlers)
+      handler->handle(frame);
+}

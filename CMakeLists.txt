@@ -21,7 +21,7 @@ find_package(OpenCV REQUIRED )
 find_file(HAVE_OPENCV_TRACKING opencv2/tracking.hpp HINTS ${OpenCV_INCLUDE_DIRS})
 if(HAVE_OPENCV_TRACKING)
     message("Found OpenCV Tracking headers")
-    add_definitions(-DHAVE_OPENCV_TRACKING)
+    option(Enable_Autoguider "Compile autoguide module" On)
 endif(HAVE_OPENCV_TRACKING)
 
 #find_package(QCustomPlot REQUIRED)

@@ -44,7 +44,14 @@
 #include <QWhatsThis>
 #include "Qt/strings.h"
 #include <Qt/functional.h>
-#include "image_handlers/all_handlers.h"
+#include "image_handlers/imagehandler.h"
+#include "image_handlers/histogram.h"
+#include "image_handlers/saveimages.h"
+#include "image_handlers/displayimage.h"
+#include "image_handlers/threadimagehandler.h"
+#ifdef HAVE_AUTOGUIDER
+#include "image_handlers/guider/autoguider.h"
+#endif
 
 using namespace GuLinux;
 using namespace std;
@@ -330,8 +337,7 @@ void PlanetaryImagerMainWindow::Private::connectCamera(const Driver::Camera::ptr
     if(imager)
         imager->destroy();
   auto compositeImageHandler = ImageHandler::ptr{new ImageHandlers{displayImage, saveImages, histogram}};
-  auto threadImageHandler = ImageHandler::ptr{new ThreadImageHandler{compositeImageHandler}};
-  CreateImagerWorker::create(camera, threadImageHandler, &imagerThread, q, bind(&Private::onImagerInitialized, this, _1) );
+  CreateImagerWorker::create(camera, make_shared<ThreadImageHandler>(compositeImageHandler), &imagerThread, q, bind(&Private::onImagerInitialized, this, _1) );
 }
 
 void PlanetaryImagerMainWindow::Private::onImagerInitialized(Imager * imager)

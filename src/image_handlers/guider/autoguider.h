@@ -15,32 +15,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef IMAGE_HANDLER_H
-#define IMAGE_HANDLER_H
 
-#include <memory>
-#include <QList>
-#include<algorithm>
-#include "commons/frame.h"
-#include "c++/dptr.h"
+#ifndef AUTOGUIDER_H
+#define AUTOGUIDER_H
 
+#include "image_handlers/imagehandler.h"
 
-class ImageHandler {
+class AutoGuider : public ImageHandler
+{
 public:
-  typedef std::shared_ptr<ImageHandler> ptr;
-  virtual void handle(const Frame::ptr &frame) = 0;
+    void handle(const Frame::ptr &frame);
 };
 
-class ImageHandlers : public ImageHandler {
-public:
-  ImageHandlers(std::initializer_list<ImageHandler::ptr> handlers);
-  virtual ~ImageHandlers();
-  virtual void handle(const Frame::ptr &frame);
-private:
-  DPTR
-};
-
-
-
-#endif
-
+#endif // AUTOGUIDER_H
