@@ -17,293 +17,46 @@
  */
 
 #include "simulatordriver.h"
-#include "drivers/imagerthread.h"
 #include <QDebug>
-#include <QThread>
-#include <QtConcurrent/QtConcurrent>
-#include <QImage>
-#include <QColor>
-#include <QFile>
-#include <QMutex>
 #include <QMutexLocker>
-#include <opencv2/opencv.hpp>
-#include "commons/opencv_utils.h"
-#include "commons/fps_counter.h"
-#include "commons/utils.h"
-#include "Qt/functional.h"
-#include <atomic>
-#include <chrono>
-#include <unordered_map>
-#include "c++/stlutils.h"
+#include "simulatorimager.h"
+#include "serimager.h"
 
-using namespace GuLinux;
 using namespace std;
-using namespace std::chrono_literals;
 
 class SimulatorCamera : public Driver::Camera {
 public:
-  virtual Imager * imager ( const ImageHandlerPtr& imageHandler) const;
-  virtual QString name() const { return "Simulator Camera"; }
-};
-
-
-class SimulatorImager : public Imager {
-  Q_OBJECT
-public:
-    SimulatorImager(const ImageHandlerPtr &handler);
-    virtual ~SimulatorImager();
-    Properties chip() const override;
-    QString name() const override;
-    void setControl(const Control& setting) override;
-    Controls controls() const override;
-    void startLive() override;
-    void stopLive() override;
-    static int rand(int a, int b);
-    QMap<QString, Imager::Control> _settings;
-    QMutex settingsMutex;
-    bool supportsROI() const override { return true; }
-    
-    class Worker : public ImagerThread::Worker {
-    public:
-      Worker(SimulatorImager *imager);
-      virtual Frame::ptr shoot();
-      virtual void start();
-      virtual void stop();
-      void setROI(const QRect &roi);
-      enum ImageType{ BGR = 0, Mono = 10, Bayer = 20};
-    private:
-      QHash<int, cv::Mat> images;
-      SimulatorImager *imager;
-      QRect roi;
-    };
-    friend class Worker;
-    QTimer refresh_temperature;
-public slots:
-    virtual void setROI(const QRect &);
-    virtual void clearROI();
+  typedef function<Imager *(const ImageHandler::ptr& imageHandler)> ImageHandlerFactory;
+  typedef shared_ptr<SimulatorCamera> ptr;
+  SimulatorCamera(const QString &name, const ImageHandlerFactory &factory);
+  virtual Imager * imager ( const ImageHandler::ptr& imageHandler) const;
+  virtual QString name() const { return m_name; }
 private:
-  ImageHandlerPtr imageHandler;
-  ImagerThread::ptr imager_thread;
-  shared_ptr<Worker> worker;
+  const QString m_name;
+  const ImageHandlerFactory factory;
 };
 
-Imager * SimulatorCamera::imager ( const ImageHandlerPtr& imageHandler ) const
-{
-  return new SimulatorImager(imageHandler);
-}
-
-SimulatorImager::~SimulatorImager()
+SimulatorCamera::SimulatorCamera(const QString& name, const ImageHandlerFactory& factory) : m_name{name}, factory{factory}
 {
 }
 
 
+
+
+Imager * SimulatorCamera::imager ( const ImageHandler::ptr& imageHandler ) const
+{
+  return factory(imageHandler);
+}
 
 Driver::Cameras SimulatorDriver::cameras() const
 {
-  static shared_ptr<SimulatorCamera> simulatorCamera = make_shared<SimulatorCamera>();
-  return {simulatorCamera};
-}
-
-SimulatorImager::SimulatorImager(const ImageHandlerPtr& handler) : imageHandler{handler}, _settings{
-    {"exposure",    {1, "exposure", 0.1, 1000, 0.1, 19.5}},
-    {"movement", {2, "movement", 0, 5, 1, 1}},
-    {"seeing",   {3, "seeing", 0, 5, 1, 1}},
-    {"bin",	 {4, "bin", 0, 3, 1, 4, 4, Control::Combo, { {"1x1", 1}, {"2x2", 2}, {"3x3", 3}, {"4x4", 4} } }}, 
-    {"format", {5, "format", 0, 100, 1, Worker::BGR, Worker::BGR, Control::Combo, { {"Mono", Worker::Mono}, {"BGR", Worker::BGR},  {"Bayer", Worker::Bayer}} }}, 
-    {"bpp",	 {6, "bpp", 8, 16, 8, 8, 8, Control::Combo, { {"8", 8}, {"16", 16},  } }}, 
-    {"reject",	 {7, "reject", 0, 10, 1, 0, 0, Control::Combo, { {"Never", 0}, {"1 out of 10", 10}, {"1 out of 5", 5}, {"1 out of 3", 3}, {"1 out of 2", 2} } }}, 
-  }
-{
-  qDebug() << "Creating simulator imager: current owning thread: " << thread() << ", qApp thread: " << qApp->thread();
-  _settings["exposure"].is_duration = true;
-  _settings["exposure"].duration_unit = 1ms;
-  _settings["seeing"].supports_auto = true;
-  
-  connect(&refresh_temperature, &QTimer::timeout, this, [this]{
-    if(!imager_thread)
-      return; // TODO: ugly fix
-    imager_thread->push_job([&]{
-      double celsius = SimulatorImager::rand(200, 500) / 10.;
-      emit temperature(celsius);
-    });
-  });
-  refresh_temperature.start(2000);
-}
-
-
-Imager::Properties SimulatorImager::chip() const
-{
-    // Simulating ASI 178mm chip: 2.4x2.4 um pixels, sensor size 7.4x5mm, resolution 3096x2080
-  // return Imager::Chip().set_pixelsize_chipsize(2.4, 2.4, 7.4, 5);
-  // return Imager::Chip().set_resolution_chipsize({3096, 2080}, 7.4, 5);
-  return Imager::Properties().set_resolution_pixelsize({3096, 2080}, 2.4, 2.4);
-}
-
-QString SimulatorImager::name() const
-{
-  return "Simulator Imager";
-}
-
-void SimulatorImager::setControl(const Imager::Control& setting)
-{
-  QMutexLocker lock_settings(&settingsMutex);
-  static uint64_t controls_changed = 0;
-  qDebug() << "Received control: " << setting << "; saved: " << _settings[setting.name];
-  int reject_every = static_cast<int>(_settings["reject"].value);
-  if(reject_every > 0 && controls_changed++ % reject_every == 0) {
-      qDebug() << "Rejecting control (" << reject_every << " reached)";
-      emit changed(_settings[setting.name]);
-      return;
-  }
-  _settings[setting.name] = setting;
-  emit changed(setting);
-}
-
-Imager::Controls SimulatorImager::controls() const
-{
-  return _settings.values();
-}
-
-
-int SimulatorImager::rand(int a, int b)
-{
-   return qrand() % ((b + 1) - a) + a;
-}
-
-
-void SimulatorImager::Worker::start()
-{
-}
-
-void SimulatorImager::Worker::stop()
-{
-}
-
-SimulatorImager::Worker::Worker(SimulatorImager* imager) : imager{imager}
-{
-    QFile file(":/simulator/jupiter_hubble.jpg");
-    file.open(QIODevice::ReadOnly);
-    QByteArray file_data = file.readAll();
-    images[BGR] = cv::imdecode(cv::InputArray{file_data.data(), file_data.size()}, CV_LOAD_IMAGE_COLOR);
-    enum ChannelIndexes {B = 0, G = 1, R = 2 };
-    /*
-    vector<cv::Mat> channels;
-    cv::split(images[BGR], channels);
-    cv::imwrite("/tmp/hubble_b.png", channels[B]);
-    cv::imwrite("/tmp/hubble_g.png", channels[G]);
-    cv::imwrite("/tmp/hubble_r.png", channels[R]);
-    */
-    cv::cvtColor(images[BGR], images[Mono], CV_BGR2GRAY);
-    images[Bayer] = cv::Mat(images[BGR].rows, images[BGR].cols, CV_8UC1);
-    
-    QHash<QPair<int,int>, int> bayer_pattern_channels {
-      // B=0, G=1, R=2
-      { {0, 0}, R }, { {0, 1}, G }, { {1, 0}, G }, { {1, 1}, B}
-    };
-    for(int row = 0; row < images[BGR].rows; row++) {
-      for(int column = 0; column < images[BGR].cols; column++) {
-        int channel = bayer_pattern_channels[{row%2, column%2}];
-        images[Bayer].at<uint8_t>(row, column) = images[BGR].at<cv::Vec3b>(row, column).val[channel];
-      }
-    }
-    for(int bin = 1; bin < 5; bin++) {
-      double ratio = 4. / bin;
-      cv::resize(images[BGR], images[BGR + bin], {}, ratio, ratio);
-      cv::resize(images[Mono], images[Mono + bin], {}, ratio, ratio);
-    }
-}
-
-
-Frame::ptr SimulatorImager::Worker::shoot()
-{
-  static map<Worker::ImageType, Frame::ColorFormat> formats {
-    {Worker::Mono, Frame::Mono},
-    {Worker::BGR, Frame::BGR},
-    {Worker::Bayer, Frame::Bayer_RGGB},
+  static Cameras _cameras {
+    make_shared<SimulatorCamera>("Simulator: Planet", [](const ImageHandler::ptr& imageHandler){ return new SimulatorImager(imageHandler); }),
+    make_shared<SimulatorCamera>("Simulator: SER file", [](const ImageHandler::ptr& imageHandler){ return new SERImager(imageHandler); }),
   };
-  auto rand = [](int a, int b) { return qrand() % ((b + 1) - a) + a; };
-  cv::Mat cropped, blurred, result;
-  Control exposure, seeing, movement, bin, format, bpp;
-  {
-      QMutexLocker lock_settings(&imager->settingsMutex);
-      exposure = imager->_settings["exposure"];
-      bin = imager->_settings["bin"];
-      format = imager->_settings["format"];
-      seeing = imager->_settings["seeing"];
-      movement = imager->_settings["movement"];
-      bpp = imager->_settings["bpp"];
-  }
-  bool is_bayer = static_cast<ImageType>(format.value) == Bayer;
-  const cv::Mat &image = is_bayer ? images[Bayer] : images[format.value + bin.value];
-  int h = image.rows;
-  int w = image.cols;
-  int crop_factor = movement.value;
-  int pix_w = rand(0, crop_factor);
-  int pix_h = rand(0, crop_factor);
-
-  cv::Rect crop_rect(0, 0, w, h);
-  crop_rect -= cv::Size{crop_factor, crop_factor};
-  crop_rect += cv::Point{pix_w, pix_h};
-  cropped = is_bayer ? image : image(crop_rect);
-  if(roi.isValid() && ! is_bayer) {
-    cropped = cropped(cv::Rect{roi.x(), roi.y(), roi.width(), roi.height()});
-  }
-  if(! is_bayer && (rand(0, seeing.max) > (seeing.value_auto ? 3 : seeing.value) ) ) {
-      auto ker_size = rand(1, 7);
-      cv::blur(cropped, blurred, {ker_size, ker_size});
-  } else {
-      cropped.copyTo(blurred);
-  }
-  double exposure_percent = (exposure.value - exposure.min) / (exposure.max - exposure.min) * 100;
-  double exposure_offset = log(exposure_percent)*150 - 100;
-  static auto started = chrono::steady_clock::now();
-  auto now = chrono::steady_clock::now();
-  if( (now-started) >= 1s) {
-    qDebug() << "Exposure percent: " << exposure_percent << ", exposure offset: " << exposure_offset;
-    started = now;
-  }
-  result = blurred + cv::Scalar{exposure_offset, exposure_offset, exposure_offset};
-
-  if(bpp.value == 16)
-      result.convertTo(result, result.channels() == 1 ? CV_16UC1 : CV_16UC3, BITS_8_TO_16);
-  GuLinux::Scope sleep{[=]{ QThread::usleep(exposure.value * 1000); } };
-  auto frame_format = formats[static_cast<Worker::ImageType>(format.value)];
-  auto frame = make_shared<Frame>( bpp.value, frame_format, QSize{result.cols, result.rows} );
-  move(result.data, result.data + frame->size(), frame->data());
-  return frame;
+  return _cameras;
 }
 
-void SimulatorImager::clearROI()
-{
-  worker->setROI({});
-}
-
-void SimulatorImager::setROI(const QRect &roi)
-{
-  worker->setROI(roi);
-}
-
-void SimulatorImager::Worker::setROI(const QRect& roi)
-{
-  this->roi = roi;
-}
-
-
-
-void SimulatorImager::startLive()
-{
-  LOG_F_SCOPE
-  qDebug() << "Creating simulator imager: current owning thread: " << thread() << ", qApp thread: " << qApp->thread() << ", timer thread: " << refresh_temperature.thread() << ", current thread: " << QThread::currentThread();
-  worker = make_shared<Worker>(this);
-  imager_thread = make_shared<ImagerThread>(worker, this, imageHandler);
-  imager_thread->start();
-}
-
-void SimulatorImager::stopLive()
-{
-  LOG_F_SCOPE
-  imager_thread.reset();
-}
 
 SimulatorDriver::SimulatorDriver()
 {

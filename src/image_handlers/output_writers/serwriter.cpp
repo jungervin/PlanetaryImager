@@ -20,7 +20,7 @@
 #include <QFile>
 #include <QDebug>
 #include <QDateTime>
-#include "ser_header.h"
+#include "commons/ser_header.h"
 
 
 using namespace std;
@@ -33,7 +33,6 @@ DPTR_IMPL(SERWriter) {
   SER_Header *header;
   uint32_t frames = 0;
   vector<QDateTime> frames_datetimes;
-  SER_Timestamp timestamp(const QDateTime &datetime) const;
 };
 
 SERWriter::SERWriter ( const QString& deviceName, Configuration& configuration ) : dptr(this)
@@ -47,8 +46,9 @@ SERWriter::SERWriter ( const QString& deviceName, Configuration& configuration )
     d->file.open(QIODevice::ReadWrite | QIODevice::Unbuffered);
   }
   SER_Header empty_header;
-  empty_header.datetime = d->timestamp(QDateTime::currentDateTime());
-  empty_header.datetime_utc = d->timestamp(QDateTime::currentDateTimeUtc());
+  empty_header.datetime = SER_Header::timestamp(QDateTime::currentDateTime());
+  empty_header.datetime_utc = SER_Header::timestamp(QDateTime::currentDateTimeUtc());
+  qDebug() << "Starting datetime: " << QDateTime::currentDateTimeUtc() << ", : " << SER_Header::qdatetime(empty_header.datetime_utc);
   ::strcpy(empty_header.camera, deviceName.left(40).toLatin1());
   ::strcpy(empty_header.observer, configuration.observer().left(40).toLatin1());
   ::strcpy(empty_header.telescope, configuration.telescope().left(40).toLatin1());
@@ -60,19 +60,13 @@ SERWriter::SERWriter ( const QString& deviceName, Configuration& configuration )
   }
 }
 
-SER_Timestamp SERWriter::Private::timestamp(const QDateTime& datetime) const
-{
-  static const QDateTime reference{{1, 1, 1}, {0,0,0}};
-  return reference.msecsTo(datetime) * 10000;
-}
-
 
 SERWriter::~SERWriter()
 {
   qDebug() << "closing file..";
   d->header->frames = d->frames;
   for(auto datetime: d->frames_datetimes) {
-    SER_Timestamp timestamp = d->timestamp(datetime);
+    SER_Timestamp timestamp = SER_Header::timestamp(datetime);
     d->file.write(reinterpret_cast<char*>(&timestamp), sizeof(timestamp));
   }
   d->file.close();
@@ -86,25 +80,10 @@ QString SERWriter::filename() const
 
 void SERWriter::handle ( const Frame::ptr &frame )
 {
-  static map<Frame::ColorFormat, SER_Header::ColorId> color_formats{
-    {Frame::Mono, SER_Header::MONO},
-    {Frame::Bayer_RGGB, SER_Header::BAYER_RGGB},
-    {Frame::Bayer_GRBG, SER_Header::BAYER_GRBG},
-    {Frame::Bayer_GBRG, SER_Header::BAYER_GBRG},
-    {Frame::Bayer_BGGR, SER_Header::BAYER_BGGR},
-        // TODO: not yet handled
-//        BAYER_CYYM = 16,
-//        BAYER_YCMY = 17,
-//        BAYER_YMCY = 18,
-//        BAYER_MYYC = 19,
-    {Frame::RGB, SER_Header::RGB},
-    {Frame::BGR, SER_Header::BGR},
-  };
-  
   if(! d->header->imageWidth) {
-    d->header->colorId = color_formats[frame->colorFormat()];
+    d->header->set_color_format(frame->colorFormat());
     d->header->pixelDepth = frame->bpp();
-    qDebug() << "SER PixelDepth set to " << d->header->pixelDepth << "bpp";
+    qDebug() << "SER PixelDepth set to " << d->header->pixelDepth << "bpp" << ", bytesPerPixels: " << d->header->bytesPerPixel();
     d->header->imageWidth = frame->resolution().width();
     d->header->imageHeight = frame->resolution().height();
   }

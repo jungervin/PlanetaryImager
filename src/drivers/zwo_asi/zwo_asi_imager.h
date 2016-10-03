@@ -26,16 +26,15 @@
 class ZWO_ASI_Imager : public Imager
 {
 public:
-    ZWO_ASI_Imager(const ASI_CAMERA_INFO &info, const ImageHandlerPtr &imageHandler);
+    ZWO_ASI_Imager(const ASI_CAMERA_INFO &info, const ImageHandler::ptr &imageHandler);
     ~ZWO_ASI_Imager();
-    Imager::Properties chip() const override;
+    Imager::Properties properties() const override;
     QString name() const override;
     Imager::Controls controls() const override;
     bool supportsROI() const override;
 public slots:
     void setControl(const Imager::Control& control) override;
     void startLive() override;
-    void stopLive() override;
     void setROI(const QRect &) override;
     void clearROI() override;
 private:

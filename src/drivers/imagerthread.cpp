@@ -33,23 +33,23 @@ using namespace std;
 DPTR_IMPL(ImagerThread) : public QObject {
   Q_OBJECT
 public:
-  Private(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandlerPtr& imageHandler);
+  Private(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandler::ptr& imageHandler);
   Worker::ptr worker;
   Imager *imager;
-  ImageHandlerPtr imageHandler;
-  LogScope log_current_class;
+  ImageHandler::ptr imageHandler;
   fps_counter fps;
   atomic_bool running;  
   QThread thread;
   boost::lockfree::spsc_queue<Job> jobs_queue;
   void thread_started();
+  
+  LOG_C_SCOPE(ImagerThread);
 };
 
-ImagerThread::Private::Private(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandlerPtr& imageHandler)
+ImagerThread::Private::Private(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandler::ptr& imageHandler)
   : worker{worker},
   imager{imager},
   imageHandler{imageHandler},
-  LOG_C_SCOPE,
   fps{[=](double rate){ emit imager->fps(rate);}, fps_counter::Mode::Elapsed},
   running{false},
   jobs_queue{20}
@@ -59,7 +59,7 @@ ImagerThread::Private::Private(const ImagerThread::Worker::ptr& worker, Imager* 
 }
 
 
-ImagerThread::ImagerThread(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandlerPtr& imageHandler)
+ImagerThread::ImagerThread(const ImagerThread::Worker::ptr& worker, Imager* imager, const ImageHandler::ptr& imageHandler)
   : dptr(worker, imager, imageHandler)
 {
 }
@@ -84,7 +84,6 @@ void ImagerThread::stop()
 void ImagerThread::Private::thread_started()
 {
   running = true;
-  worker->start();
   while(running) {
     Job queued_job;
     while(jobs_queue.pop(queued_job)) {
@@ -105,7 +104,6 @@ void ImagerThread::Private::thread_started()
       qWarning() << e.what();
     }
   }
-  worker->stop();
 }
 
 void ImagerThread::push_job(const Job& job)

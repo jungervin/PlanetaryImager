@@ -75,7 +75,7 @@ DPTR_IMPL(PlanetaryImagerMainWindow) {
     
   RecordingPanel* recording_panel;
   
-  void connectCamera(const Driver::CameraPtr &camera);
+  void connectCamera(const Driver::Camera::ptr &camera);
   void cameraDisconnected();
   void enableUIWidgets(bool cameraConnected);
     void init_devices_watcher();
@@ -90,23 +90,23 @@ class CreateImagerWorker : public QObject {
   Q_OBJECT
 public:
   typedef std::function<void(Imager *)> Slot;
-  static void create(const Driver::CameraPtr& camera, const ImageHandlerPtr& imageHandler, QThread* thread, QObject *context, Slot on_created);
+  static void create(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created);
 private slots:
   void exec();
 private:
-  explicit CreateImagerWorker(const Driver::CameraPtr& camera, const ImageHandlerPtr& imageHandler);
-  Driver::CameraPtr camera;
-  ImageHandlerPtr imageHandler;
+  explicit CreateImagerWorker(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler);
+  Driver::Camera::ptr camera;
+  ImageHandler::ptr imageHandler;
 signals:
   void imager(Imager *imager);
 };
 
-CreateImagerWorker::CreateImagerWorker(const Driver::CameraPtr& camera, const ImageHandlerPtr &imageHandler)
+CreateImagerWorker::CreateImagerWorker(const Driver::Camera::ptr& camera, const ImageHandler::ptr &imageHandler)
   : QObject(nullptr), camera{camera}, imageHandler{imageHandler}
 {
 }
 
-void CreateImagerWorker::create(const Driver::CameraPtr& camera, const ImageHandlerPtr& imageHandler, QThread* thread, QObject *context, Slot on_created)
+void CreateImagerWorker::create(const Driver::Camera::ptr& camera, const ImageHandler::ptr& imageHandler, QThread* thread, QObject *context, Slot on_created)
 {
   auto create_imager = new CreateImagerWorker(camera, imageHandler);
   create_imager->moveToThread(thread);
@@ -127,8 +127,9 @@ PlanetaryImagerMainWindow::~PlanetaryImagerMainWindow()
 {
   LOG_F_SCOPE
   d->saveState();
-  if(d->imager)
-      d->imager->stopLive();
+  if(d->imager) {
+      d->imager->destroy();
+  }
   d->imagerThread.quit();
   d->imagerThread.wait();
 }
@@ -249,7 +250,7 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
     d->imagerThread.start();
     connect(qApp, &QApplication::aboutToQuit, this, [=]{
       if(d->imager)
-        d->imager->stopLive();
+        d->imager->destroy();
     }, Qt::QueuedConnection);
     connect(qApp, &QApplication::aboutToQuit, this, [&] {
       d->displayImage->quit();
@@ -324,12 +325,12 @@ void PlanetaryImagerMainWindow::Private::rescan_devices()
   });
 }
 
-void PlanetaryImagerMainWindow::Private::connectCamera(const Driver::CameraPtr& camera)
+void PlanetaryImagerMainWindow::Private::connectCamera(const Driver::Camera::ptr& camera)
 {
     if(imager)
         imager->destroy();
-  auto compositeImageHandler = ImageHandlerPtr{new ImageHandlers{displayImage, saveImages, histogram}};
-  auto threadImageHandler = ImageHandlerPtr{new ThreadImageHandler{compositeImageHandler}};
+  auto compositeImageHandler = ImageHandler::ptr{new ImageHandlers{displayImage, saveImages, histogram}};
+  auto threadImageHandler = ImageHandler::ptr{new ThreadImageHandler{compositeImageHandler}};
   CreateImagerWorker::create(camera, threadImageHandler, &imagerThread, q, bind(&Private::onImagerInitialized, this, _1) );
 }
 

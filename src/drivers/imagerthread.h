@@ -29,12 +29,11 @@ class ImagerThread
   typedef std::function<void()> Job;
   class Worker {
   public:
-    virtual void start() = 0;
     virtual Frame::ptr shoot() = 0;
-    virtual void stop() = 0;
     typedef std::shared_ptr<Worker> ptr;
+    typedef std::function<ptr()> factory;
   };
-  ImagerThread(const Worker::ptr& worker, Imager* imager, const ImageHandlerPtr& imageHandler);
+  ImagerThread(const Worker::ptr& worker, Imager* imager, const ImageHandler::ptr& imageHandler);
   ~ImagerThread();
   void stop();
   void start();
