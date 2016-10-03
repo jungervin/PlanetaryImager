@@ -19,7 +19,26 @@
 #define OPENCV_UTILS_H
 #include <opencv2/opencv.hpp>
 #include <QDebug>
+#include <QRectF>
 
+namespace Utils {
+  namespace cv{
+    inline QRectF cv2qrectf(const ::cv::Rect2d &r) {
+      return {r.x, r.y, r.width, r.height};
+    }
+    inline QRect cv2qrect(const ::cv::Rect2d &r) {
+      return cv2qrectf(r).toRect();
+    }
+
+    inline ::cv::Rect2d qrectf2cv(const QRectF &r) {
+      return {r.x(), r.y(), r.width(), r.height()};
+    }
+
+    inline ::cv::Rect2d qrect2cv(const QRect &r) {
+      return qrectf2cv({r});
+    }
+  }
+}
 inline QDebug operator<<(QDebug dbg, const cv::Point &point) {
   dbg.nospace() << "{" << point.x << "," << point.y << "}";
   return dbg.space();

@@ -337,7 +337,7 @@ void PlanetaryImagerMainWindow::Private::connectCamera(const Driver::Camera::ptr
 {
     if(imager)
         imager->destroy();
-  auto compositeImageHandler = ImageHandler::ptr{new ImageHandlers{displayImage, saveImages, histogram}};
+  auto compositeImageHandler = ImageHandler::ptr{new ImageHandlers{displayImage, saveImages, histogram, autoguider}};
   CreateImagerWorker::create(camera, make_shared<ThreadImageHandler>(compositeImageHandler), &imagerThread, q, bind(&Private::onImagerInitialized, this, _1) );
 }
 
