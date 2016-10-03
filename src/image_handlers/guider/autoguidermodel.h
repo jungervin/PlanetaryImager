@@ -16,28 +16,23 @@
  *
  */
 
-#ifndef AUTOGUIDER_H
-#define AUTOGUIDER_H
-
-#include "image_handlers/imagehandler.h"
+#ifndef AUTOGUIDERMODEL_H
+#define AUTOGUIDERMODEL_H
 #include "drivers/autoguider.h"
-#include "autoguidermodel.h"
+#include "c++/dptr.h"
 
-class QGraphicsScene;
-class Configuration;
-class QRect;
-class AutoGuider : public ImageHandler
+class QPointF;
+class AutoguiderModel
 {
 public:
-  AutoGuider(QGraphicsScene *scene, Configuration &configuration);
-  virtual ~AutoGuider();
-  typedef std::shared_ptr<AutoGuider> ptr;
-    void handle(const Frame::ptr &frame);
-    void track(const QRect &rect);
-    void setGuider(const Drivers::Autoguider::ptr &autoguider);
-    AutoguiderModel::ptr model() const;
+  typedef std::shared_ptr<AutoguiderModel> ptr;
+  AutoguiderModel(const Drivers::Autoguider::ptr &guider);
+  ~AutoguiderModel();
+  bool initialized() const;
+  void learn();
+  void new_coordinates(const QPointF &coordinates);
 private:
   DPTR
 };
 
-#endif // AUTOGUIDER_H
+#endif // AUTOGUIDERMODEL_H

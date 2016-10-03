@@ -49,6 +49,7 @@ DPTR_IMPL(AutoGuider) {
   cv::Rect2d track_roi;
   cv::Ptr<cv::Tracker> tracker;
   QElapsedTimer elapsed;
+  AutoguiderModel::ptr model;
 };
 
 AutoGuider::AutoGuider(QGraphicsScene* scene, Configuration &configuration) : dptr(scene, configuration)
@@ -97,7 +98,10 @@ void AutoGuider::handle(const Frame::ptr& frame)
     d->track_mode = initialized ? Private::Track : Private::TrackNone;
   } else if(d->track_mode == Private::Track) {
     d->tracker->update(image, d->track_roi);
-    QMetaObject::invokeMethod(d->autoguider_rect.get(), "update", Q_ARG(QRectF, Utils::cv::cv2qrectf(d->track_roi)));
+    auto rect = Utils::cv::cv2qrectf(d->track_roi);
+    if(d->model)
+      d->model->new_coordinates(rect.center());
+    QMetaObject::invokeMethod(d->autoguider_rect.get(), "update", Q_ARG(QRectF, rect));
   }
 }
 
@@ -111,6 +115,13 @@ void AutoGuider::track(const QRect& rect)
 void AutoGuider::setGuider(const Drivers::Autoguider::ptr& autoguider)
 {
   qDebug() << "Setting autoguider: " << autoguider.operator bool();
+  d->model.reset();
+  if(autoguider)
+    d->model = make_shared<AutoguiderModel>(autoguider);
+}
+
+AutoguiderModel::ptr AutoGuider::model() const {
+  return d->model;
 }
 
 
