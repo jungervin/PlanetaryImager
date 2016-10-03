@@ -24,6 +24,7 @@
 class AutoGuider : public ImageHandler
 {
 public:
+  typedef std::shared_ptr<AutoGuider> ptr;
     void handle(const Frame::ptr &frame);
 };
 

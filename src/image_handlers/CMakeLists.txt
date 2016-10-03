@@ -1,6 +1,5 @@
 file(GLOB image_handlers_SRCS *.cpp)
 if(Enable_Autoguider)
-    add_definitions(-DHAVE_AUTOGUIDER)
     file(GLOB autoguider_SRCS guider/*.cpp)
     message("Enabling autoguider sources: ${autoguider_SRCS}")
 endif(Enable_Autoguider)

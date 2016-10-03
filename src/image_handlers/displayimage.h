@@ -28,6 +28,7 @@ class DisplayImage : public QObject, public ImageHandler
 {
 Q_OBJECT
 public:
+   typedef std::shared_ptr<DisplayImage> ptr;
     ~DisplayImage();
     DisplayImage(Configuration &configuration, QObject* parent = 0);
     virtual void handle(const Frame::ptr &frame);

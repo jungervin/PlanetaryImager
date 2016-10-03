@@ -29,6 +29,7 @@ class SaveImages : public QObject, public ImageHandler
 {
   Q_OBJECT
 public:
+  typedef std::shared_ptr<SaveImages> ptr;
     SaveImages(Configuration &configuration, QObject *parent = 0);
     ~SaveImages();
     virtual void handle(const Frame::ptr &frame);

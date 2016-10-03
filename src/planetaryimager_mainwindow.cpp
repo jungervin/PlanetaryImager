@@ -70,11 +70,12 @@ DPTR_IMPL(PlanetaryImagerMainWindow) {
   void saveState();
 
   StatusBarInfoWidget *statusbar_info_widget;
-  shared_ptr<DisplayImage> displayImage;
   QThread displayImageThread;
   QThread imagerThread;
-  shared_ptr<SaveImages> saveImages;
+  DisplayImage::ptr displayImage;
+  SaveImages::ptr saveImages;
   Histogram::ptr histogram;
+
   CameraControlsWidget* cameraSettingsWidget = nullptr;
   CameraInfoWidget* cameraInfoWidget = nullptr;
   HistogramWidget *histogramWidget = nullptr;
@@ -290,8 +291,6 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
       d->selection_mode = Private::NoSelection;
     });
 }
-
-#include <iostream>
 
 void PlanetaryImagerMainWindow::Private::init_devices_watcher()
 {

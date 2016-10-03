@@ -23,6 +23,10 @@ if(HAVE_OPENCV_TRACKING)
     message("Found OpenCV Tracking headers")
     option(Enable_Autoguider "Compile autoguide module" On)
 endif(HAVE_OPENCV_TRACKING)
+if(Enable_Autoguider)
+    add_definitions(-DHAVE_AUTOGUIDER)
+endif(Enable_Autoguider)
+
 
 #find_package(QCustomPlot REQUIRED)
 
