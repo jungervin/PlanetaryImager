@@ -135,6 +135,7 @@ SimulatorAutoguider::SimulatorAutoguider(const ImageHandler::ptr& handler) : Ima
     {VerticalDrift, {VerticalDrift, "VerticalDrift", -2, 2, 0.01, 0, 0, Control::Number}},
   };
   set_autoguider([=](Drivers::Autoguider::Direction direction, const chrono::milliseconds &duration){
+    LOG_F_SCOPE_ARGS("worker: %1, direction: %2, duration: %3"_q % d->worker.operator bool() % direction % duration.count());
     if(! d->worker)
       return false;
     return d->worker->guide(direction, duration);
@@ -174,7 +175,7 @@ void SimulatorAutoguider::setROI(const QRect&)
 
 void SimulatorAutoguider::startLive()
 {
-  restart([this]{ return make_shared<AutoguiderWorker>(d->controls); });
+  restart([this]{ return d->worker = make_shared<AutoguiderWorker>(d->controls); });
 }
 
 bool SimulatorAutoguider::supportsROI() const
@@ -186,6 +187,7 @@ bool AutoguiderWorker::guide(Drivers::Autoguider::Direction& direction, const ch
 {
   if(! coordinates)
     return false;
+  LOG_F_SCOPE_ARGS("Guiding to direction %1 for %2ms"_q % direction % duration.count());
   QElapsedTimer elapsed;
   elapsed.restart();
   double rate = 1;
@@ -194,7 +196,7 @@ bool AutoguiderWorker::guide(Drivers::Autoguider::Direction& direction, const ch
     { Drivers::Autoguider::North, {0, -1} },
     { Drivers::Autoguider::South, {0, +1} },
     { Drivers::Autoguider::East, {+1, 0} },
-    { Drivers::Autoguider::East, {-1, 0} },
+    { Drivers::Autoguider::West, {-1, 0} },
   };
   while(elapsed.elapsed() < duration.count()) {
     *coordinates += directions[direction];

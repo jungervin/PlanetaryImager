@@ -51,6 +51,7 @@ private:
   };
 
 #define LOG_F_SCOPE LogScope log_current_scope(__PRETTY_FUNCTION__);
+#define LOG_F_SCOPE_ARGS(...) LogScope log_current_scope(__PRETTY_FUNCTION__, __VA_ARGS__);
 #define LOG_C_SCOPE(Class) LogClassScope<Class> log_current_class
   
 #endif

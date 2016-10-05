@@ -19,6 +19,11 @@
 #include "autoguidermodel.h"
 #include <QPointF>
 #include <QtConcurrent/QtConcurrent>
+#include <chrono>
+#include "commons/utils.h"
+using namespace std;
+using namespace std::chrono_literals;
+
 DPTR_IMPL(AutoguiderModel) {
   const Drivers::Autoguider::ptr guider;
   bool initialized = false;
@@ -39,15 +44,19 @@ AutoguiderModel::~AutoguiderModel()
 
 void AutoguiderModel::learn()
 {
+  LOG_F_SCOPE;
   d->status = Learning;
-  d->start_learning(Drivers::Autoguider::North);
-  d->start_learning(Drivers::Autoguider::South);
-  d->start_learning(Drivers::Autoguider::East);
-  d->start_learning(Drivers::Autoguider::West);
+    QtConcurrent::run([=]{
+    d->start_learning(Drivers::Autoguider::North);
+    d->start_learning(Drivers::Autoguider::South);
+    d->start_learning(Drivers::Autoguider::East);
+    d->start_learning(Drivers::Autoguider::West);
+  });
 }
 
 void AutoguiderModel::Private::start_learning(Drivers::Autoguider::Direction direction)
 {
+  guider->guide(direction, 15ms);
 }
 
 void AutoguiderModel::Private::learn(const QPointF& coordinates)
