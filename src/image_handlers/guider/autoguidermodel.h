@@ -31,6 +31,8 @@ public:
   bool initialized() const;
   void learn();
   void new_coordinates(const QPointF &coordinates);
+  enum Status { Idle, Learning, Guiding };
+  Status status() const;
 private:
   DPTR
 };

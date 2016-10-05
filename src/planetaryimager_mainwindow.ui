@@ -68,10 +68,20 @@
     <addaction name="actionAbout"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
+   <widget class="QMenu" name="menuGuide">
+    <property name="title">
+     <string>Guide</string>
+    </property>
+    <addaction name="actionTrack"/>
+    <addaction name="actionLearn"/>
+    <addaction name="separator"/>
+    <addaction name="actionGuide"/>
+   </widget>
    <addaction name="menuDevice"/>
    <addaction name="menuPanels"/>
    <addaction name="menuView"/>
    <addaction name="menuSettings"/>
+   <addaction name="menuGuide"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="chipInfoWidget">
@@ -152,7 +162,6 @@
    <addaction name="separator"/>
    <addaction name="actionSelect_ROI"/>
    <addaction name="actionClear_ROI"/>
-   <addaction name="actionTrack"/>
   </widget>
   <widget class="QDockWidget" name="histogram">
    <property name="floating">
@@ -309,6 +318,16 @@
   <action name="actionTrack">
    <property name="text">
     <string>Track</string>
+   </property>
+  </action>
+  <action name="actionLearn">
+   <property name="text">
+    <string>Learn</string>
+   </property>
+  </action>
+  <action name="actionGuide">
+   <property name="text">
+    <string>Guide</string>
    </property>
   </action>
  </widget>

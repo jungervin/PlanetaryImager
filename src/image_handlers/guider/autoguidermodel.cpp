@@ -17,10 +17,16 @@
  */
 
 #include "autoguidermodel.h"
-
+#include <QPointF>
+#include <QtConcurrent/QtConcurrent>
 DPTR_IMPL(AutoguiderModel) {
   const Drivers::Autoguider::ptr guider;
   bool initialized = false;
+  Status status = Idle;
+  QPointF initial;
+  void guide(const QPointF &coordinates);
+  void learn(const QPointF &coordinates);
+  void start_learning(Drivers::Autoguider::Direction direction);
 };
 
 AutoguiderModel::AutoguiderModel(const Drivers::Autoguider::ptr& guider) : dptr(guider)
@@ -33,13 +39,47 @@ AutoguiderModel::~AutoguiderModel()
 
 void AutoguiderModel::learn()
 {
+  d->status = Learning;
+  d->start_learning(Drivers::Autoguider::North);
+  d->start_learning(Drivers::Autoguider::South);
+  d->start_learning(Drivers::Autoguider::East);
+  d->start_learning(Drivers::Autoguider::West);
 }
+
+void AutoguiderModel::Private::start_learning(Drivers::Autoguider::Direction direction)
+{
+}
+
+void AutoguiderModel::Private::learn(const QPointF& coordinates)
+{
+}
+
 
 void AutoguiderModel::new_coordinates(const QPointF& coordinates)
 {
+  if(d->status == Idle) {
+    d->initial = coordinates;
+    return;
+  }
+  if(d->status == Guiding) {
+    d->guide(coordinates);
+    return;
+  }
+  d->learn(coordinates);
 }
+
+void AutoguiderModel::Private::guide(const QPointF& coordinates)
+{
+}
+
 
 bool AutoguiderModel::initialized() const
 {
   return d->initialized;
 }
+
+AutoguiderModel::Status AutoguiderModel::status() const
+{
+  return d->status;
+}
+

@@ -278,9 +278,13 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
       d->selection_mode = Private::ROI;
       d->image_widget->startSelectionMode();
     });
-    connect(d->ui->actionTrack, &QAction::triggered, [&] { 
+    connect(d->ui->actionTrack, &QAction::triggered, [&] {
       d->selection_mode = Private::Guide;
       d->image_widget->startSelectionMode();
+    });
+    connect(d->ui->actionLearn, &QAction::triggered, [&] {
+      if(d->autoguider->model())
+        d->autoguider->model()->learn();
     });
     QMap<Private::SelectionMode, function<void(const QRect &)>> handle_selection {
       {Private::NoSelection, [](const QRect&) {}},
