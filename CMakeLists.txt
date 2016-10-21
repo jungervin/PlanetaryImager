@@ -3,7 +3,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 enable_testing()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/GuLinux-Commons/cmake)
-include_directories(GuLinux-Commons GuLinux-Commons/c++)
+include_directories(GuLinux-Commons GuLinux-Commons/c++ src)
 project(PlanetaryImager)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -11,6 +11,12 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 find_package(Qt5Widgets REQUIRED )
 find_package(Qt5PrintSupport REQUIRED)
+find_package(Qt5OpenGL)
+if(Qt5OpenGL_FOUND)
+  message("Using OpenGL renderer for image view")
+  add_definitions(-DHAVE_QT5_OPENGL)
+  set(Qt5_OpenGL_LIBRARIES Qt5::OpenGL)
+endif()
 
 include_directories(${Qt5Widgets_INCLUDE_DIRS} ${Qt5PrintSupport_INCLUDE_DIRS})
 
@@ -44,7 +50,7 @@ endif(cflags_fpic)
 
 set(MAJOR_VERSION 0)
 set(MINOR_VERSION 6)
-set(PATCH_VERSION 0)
+set(PATCH_VERSION 90)
 set(VERSION_SUFFIX "" CACHE INTERNAL "")
 set(FULL_VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}${PACKAGE_VERSION_SUFFIX})
 
@@ -63,9 +69,14 @@ set(FULL_VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}${PACKAGE_VER
  message("Detected architecture: ${PlanetaryImager_ARCH}")
 SET(EXTRA_LIBRARIES "" CACHE STRING "Extra libraries for linking")
 add_subdirectory(GuLinux-Commons/Qt)
+add_subdirectory(GuLinux-Commons/c++)
 
 add_subdirectory(src)
-add_subdirectory(tests)
+option(ENABLE_PLANETARYIMAGER_TESTING "Enable Planetary Imager unit tests" Off)
+if(ENABLE_PLANETARYIMAGER_TESTING)
+  add_subdirectory(tests)
+endif()
+
 add_subdirectory(files)
 add_subdirectory(support)
 

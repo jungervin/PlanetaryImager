@@ -21,7 +21,17 @@
 #include <iostream>
 #include <iomanip>
 #include <QDebug>
+#include "c++/backtrace.h"
+#include <unistd.h>
+#include <signal.h>
 using namespace std;
+
+
+void crash_handler(int sig) {
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  cerr << GuLinux::Backtrace::backtrace(50, 1);
+  exit(1);
+}
 
 void log_handler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
@@ -42,6 +52,8 @@ void log_handler(QtMsgType type, const QMessageLogContext &context, const QStrin
 
 int main(int argc, char** argv)
 {
+    signal(SIGSEGV, crash_handler);
+    signal(SIGABRT, crash_handler);
     cerr << "Starting PlanetaryImager - version " << PLANETARY_IMAGER_VERSION << " (" << HOST_PROCESSOR << ")" << endl;
     QApplication app(argc, argv);
     qInstallMessageHandler(log_handler);
@@ -50,6 +62,5 @@ int main(int argc, char** argv)
     app.setApplicationVersion(PLANETARY_IMAGER_VERSION);
     PlanetaryImagerMainWindow mainWindow;
     mainWindow.show();
-    
     return app.exec();
 }

@@ -173,6 +173,10 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
     d->ui->image->layout()->setSpacing(0);
     d->ui->image->layout()->addWidget(d->image_widget = new ZoomableImage(false));
     d->autoguider = make_shared<AutoGuider>(d->image_widget->scene(), d->configuration);
+#ifdef HAVE_QT5_OPENGL // TODO: make configuration item
+    if(d->configuration.opengl())
+      d->image_widget->setOpenGL();
+#endif
     connect(d->image_widget, &ZoomableImage::zoomLevelChanged, d->statusbar_info_widget, &StatusBarInfoWidget::zoom);
     d->statusbar_info_widget->zoom(d->image_widget->zoomLevel());
     for(auto item: d->image_widget->actions())
@@ -297,6 +301,13 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
       d->selection_mode = Private::NoSelection;
     });
 }
+
+void PlanetaryImagerMainWindow::closeEvent(QCloseEvent* event)
+{
+  QMainWindow::closeEvent(event);
+  qApp->quit();
+}
+
 
 void PlanetaryImagerMainWindow::Private::init_devices_watcher()
 {

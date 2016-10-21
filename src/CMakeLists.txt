@@ -1,5 +1,4 @@
 file(GLOB PlanetaryImager_SRCS *.cpp *.ui)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 unset(planetary_imager_DEPS CACHE)
 function(add_imager_dependencies)
@@ -16,11 +15,12 @@ message("dependencies: ${planetary_imager_DEPS}")
   
 target_link_libraries(planetary_imager
     GuLinux_Qt_Commons
+    GuLinux_c++_Commons
     ${planetary_imager_DEPS}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
-    #${QCustomPlot_LIBRARIES}
     Qt5::Widgets
+    ${Qt5_OpenGL_LIBRARIES}
     pthread
     ${EXTRA_LIBRARIES}
 )

@@ -16,23 +16,29 @@
  *
  */
 
-#ifndef V4L2_EXCEPTION_H
-#define V4L2_EXCEPTION_H
-
-#include <stdexcept>
+#ifndef ROI_H
+#define ROI_H
 #include "c++/dptr.h"
-#include "drivers/imagerexception.h"
+#include <QRect>
+#include <functional>
+#include <list>
 
-class V4L2Exception : public Imager::exception {
+class ROIValidator {
 public:
-  enum ErrorType { v4l2_error, control_disabled, control_type_unknown, unimplemented_error };
-  V4L2Exception(ErrorType type, const std::string &message, const std::string &where = {});
-  V4L2Exception(int retcode, const std::string &where = {});
-  ErrorType type() const;
+  typedef std::function<void(QRect &)> Rule;
+  typedef std::shared_ptr<ROIValidator> ptr;
+  ROIValidator(const std::list<Rule> &rules);
+  ROIValidator(const std::initializer_list<Rule> &rules);
+  ~ROIValidator();
+  QRect validate(const QRect & original) const;
+  static Rule max_resolution(const QRect &max);
+  static Rule width_multiple(int factor);
+  static Rule height_multiple(int factor);
+  static Rule x_multiple(int factor);
+  static Rule y_multiple(int factor);
+  static Rule area_multiple(int factor, int width_step, int height_step, const QRect &fallback = QRect{});
 private:
-  const ErrorType m_type;
+  DPTR
 };
 
-#define V4L2_CHECK C_ERROR_CHECK(std::equal_to<int>, V4L2Exception, -1)
-
-#endif // ZWOEXCEPTION_H
+#endif // ROI_H
