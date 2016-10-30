@@ -52,6 +52,7 @@
 #ifdef HAVE_AUTOGUIDER
 #include "image_handlers/guider/autoguider.h"
 #endif
+#include <QGraphicsScene>
 
 using namespace GuLinux;
 using namespace std;
@@ -61,7 +62,7 @@ using namespace std::placeholders;
 Q_DECLARE_METATYPE(cv::Mat)
 
 DPTR_IMPL(PlanetaryImagerMainWindow) {
-  PlanetaryImagerMainWindow *q;
+  static PlanetaryImagerMainWindow *q;
   unique_ptr<Ui::PlanetaryImagerMainWindow> ui;
   ImagingDriver::ptr driver = make_shared<SupportedImagingDrivers>();
   Imager *imager = nullptr;
@@ -95,6 +96,8 @@ DPTR_IMPL(PlanetaryImagerMainWindow) {
   enum SelectionMode { NoSelection, ROI, Guide } selection_mode = NoSelection;
 };
 
+PlanetaryImagerMainWindow *PlanetaryImagerMainWindow::Private::q = nullptr;
+
 class CreateImagerWorker : public QObject {
   Q_OBJECT
 public:
@@ -125,9 +128,13 @@ void CreateImagerWorker::create(const ImagingDriver::Camera::ptr& camera, const 
 
 void CreateImagerWorker::exec()
 {
-  auto imager = camera->imager(imageHandler);
-  if(imager)
-    emit this->imager(imager);
+  try {
+    auto imager = camera->imager(imageHandler);
+    if(imager)
+      emit this->imager(imager);
+  } catch(const std::exception &e) {
+    PlanetaryImagerMainWindow::queue_notify(PlanetaryImagerMainWindow::Error, tr("Initialization Error"), tr("Error initializing imager %1: \n%2") % camera->name() % e.what());
+  }
   deleteLater();
 }
 
@@ -149,13 +156,21 @@ void PlanetaryImagerMainWindow::Private::saveState()
   configuration.set_main_window_geometry(q->saveGeometry());
 }
 
-
-PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::WindowFlags flags) : dptr(this)
+PlanetaryImagerMainWindow * PlanetaryImagerMainWindow::instance()
 {
+  return Private::q;
+}
+
+
+
+PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::WindowFlags flags) : dptr()
+{
+    Private::q = this;
     static bool metatypes_registered = false;
     if(!metatypes_registered) {
       metatypes_registered = true;
       qRegisterMetaType<Frame::ptr>("Frame::ptr");
+      qRegisterMetaType<PlanetaryImagerMainWindow::NotificationType>("PlanetaryImagerMainWindow::NotificationType");
     }
     d->ui.reset(new Ui::PlanetaryImagerMainWindow);
     d->ui->setupUi(this);
@@ -177,6 +192,7 @@ PlanetaryImagerMainWindow::PlanetaryImagerMainWindow(QWidget* parent, Qt::Window
     if(d->configuration.opengl())
       d->image_widget->setOpenGL();
 #endif
+    d->image_widget->scene()->setBackgroundBrush(QBrush{Qt::black, Qt::Dense4Pattern});
     connect(d->image_widget, &ZoomableImage::zoomLevelChanged, d->statusbar_info_widget, &StatusBarInfoWidget::zoom);
     d->statusbar_info_widget->zoom(d->image_widget->zoomLevel());
     for(auto item: d->image_widget->actions())
@@ -403,5 +419,24 @@ void PlanetaryImagerMainWindow::Private::enableUIWidgets(bool cameraConnected)
   ui->chipInfoWidget->setEnabled(cameraConnected);
   ui->camera_settings->setEnabled(cameraConnected);
 }
+
+void PlanetaryImagerMainWindow::notify(PlanetaryImagerMainWindow::NotificationType notification_type, const QString& title, const QString& message)
+{
+  static QHash<NotificationType, function<void(const QString&, const QString&)>> types_map {
+    {Warning, [](const QString &title, const QString &message) { QMessageBox::warning(nullptr, title, message); }},
+    {Error, [](const QString &title, const QString &message) { QMessageBox::critical(nullptr, title, message); }},
+    {Info, [](const QString &title, const QString &message) { QMessageBox::information(nullptr, title, message); }},
+  };
+  types_map[notification_type](title, message);
+}
+
+void PlanetaryImagerMainWindow::queue_notify(PlanetaryImagerMainWindow::NotificationType notification_type, const QString& title, const QString& message)
+{
+  QMetaObject::invokeMethod(PlanetaryImagerMainWindow::instance(), "notify", Qt::QueuedConnection,
+                            Q_ARG(PlanetaryImagerMainWindow::NotificationType, notification_type),
+                            Q_ARG(QString, title),  
+                            Q_ARG(QString, message));
+}
+
 
 #include "planetaryimager_mainwindow.moc"

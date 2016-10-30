@@ -28,10 +28,15 @@ class PlanetaryImagerMainWindow;
 
 class PlanetaryImagerMainWindow : public QMainWindow
 {
-//     Q_OBJECT
+  Q_OBJECT
 public:
     ~PlanetaryImagerMainWindow();
     PlanetaryImagerMainWindow(QWidget* parent = 0, Qt::WindowFlags flags = 0);
+    enum NotificationType {Warning, Error, Info, };
+    static PlanetaryImagerMainWindow *instance();
+    static void queue_notify(PlanetaryImagerMainWindow::NotificationType notification_type, const QString &title, const QString &message);
+public slots:
+  void notify(PlanetaryImagerMainWindow::NotificationType notification_type, const QString &title, const QString &message);
 protected:
   void closeEvent(QCloseEvent *event) override;
 private:
